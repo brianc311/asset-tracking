@@ -51,7 +51,11 @@ body {
 a { color: var(--link); text-decoration: none; }
 a:hover { opacity: 0.85; }
 
-h1, h2, h3, h4, h5, h6, p, li, label, td, th {
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+}
+
+p, li, label {
   color: inherit;
 }
 
@@ -116,9 +120,12 @@ h1, h2, h3, h4, h5, h6, p, li, label, td, th {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
   color: #fff !important;
-  border: none;
+  border: none !important;
+}
+.stat-card-muted {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
 }
 .stat-card h1, .stat-card h2, .stat-card h3,
 .stat-card .stat-value, .stat-card .stat-label {
@@ -312,11 +319,38 @@ code {
 
 .section-title {
   margin-top: 0;
+  color: var(--text) !important;
+}
+
+.main-content .card:not(.stat-card) {
+  background: var(--surface);
   color: var(--text);
 }
 
+.main-content .card:not(.stat-card) h1,
+.main-content .card:not(.stat-card) h2,
+.main-content .card:not(.stat-card) h3,
+.main-content .card:not(.stat-card) p,
+.main-content .card:not(.stat-card) td,
+.main-content .card:not(.stat-card) th,
+.main-content .card:not(.stat-card) label,
+.main-content .section-title {
+  color: var(--text);
+}
+
+.main-content table.data-table td {
+  color: var(--text);
+}
+
+.main-content .btn-secondary {
+  background: var(--surface);
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+}
+
+@media print {
   .site-header, .site-footer, .toolbar, .no-print { display: none !important; }
   .main-content { max-width: 100%; padding: 0; }
-  body { background: #fff; color: #000; }
-  .card { background: #fff; color: #000; border: 1px solid #ccc; }
+  body { background: #fff !important; color: #000 !important; }
+  .card { background: #fff !important; color: #000 !important; border: 1px solid #ccc; }
 }
