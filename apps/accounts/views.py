@@ -8,7 +8,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
+from apps.accounts.access_log import log_access
 from apps.accounts.forms import RecaptchaAuthenticationForm
+from apps.accounts.models import AccessLog
 from apps.assets.models import Asset
 
 
@@ -27,6 +29,15 @@ class AppLoginView(LoginView):
         context["recaptcha_key_prefix"] = key[:12]
         context["recaptcha_is_test_key"] = key.startswith("6LeIxAcT")
         return context
+
+    def form_valid(self, form):
+        log_access(self.request, AccessLog.EventType.LOGIN_SUCCESS, username=form.get_user().username)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        username = form.data.get("username", "")
+        log_access(self.request, AccessLog.EventType.LOGIN_FAILED, username=username)
+        return super().form_invalid(form)
 
 
 class AppLogoutView(LogoutView):

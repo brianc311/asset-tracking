@@ -12,5 +12,7 @@ urlpatterns = [
     path("<int:pk>/barcode/", views.asset_barcode, name="barcode"),
     path("bulk/", views.bulk_action, name="bulk"),
     path("report/", views.print_report, name="report"),
+    path("reports/", views.site_reports_index, name="site_reports"),
+    path("reports/view/", views.site_report_view, name="site_report"),
     path("report/email/", views.email_site_report, name="email_report"),
 ]

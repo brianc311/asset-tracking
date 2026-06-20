@@ -26,8 +26,8 @@ def get_site_names_with_assets(include_archived=False):
     return sorted(set(qs.values_list("site_name", flat=True)), key=str.lower)
 
 
-def apply_site_name_fields(form, known_site_names, *, default_site_name="", current_site_name=""):
-    if form.instance.pk:
+def apply_site_name_choices(form, known_site_names, *, default_site_name="", current_site_name=""):
+    if hasattr(form, "instance") and getattr(form.instance, "pk", None):
         current = (current_site_name or form.instance.site_name or "").strip()
     else:
         current = (current_site_name or default_site_name or form.initial.get("site_name") or "").strip()
@@ -64,6 +64,15 @@ def apply_site_name_fields(form, known_site_names, *, default_site_name="", curr
     elif current:
         form.fields["site_name"].initial = NEW_SITE_VALUE
         form.fields["new_site_name"].initial = current
+
+
+def apply_site_name_fields(form, known_site_names, *, default_site_name="", current_site_name=""):
+    apply_site_name_choices(
+        form,
+        known_site_names,
+        default_site_name=default_site_name,
+        current_site_name=current_site_name,
+    )
 
 
 def resolve_site_name(cleaned_data, *, default_site_name="", errors_form=None):

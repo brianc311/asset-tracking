@@ -2,28 +2,21 @@ from django import forms
 
 from apps.assets.forms import ASSET_FIELD_ORDER
 from apps.assets.models import Asset
-from apps.assets.site_names import apply_site_name_fields, resolve_site_name
+from apps.assets.site_names import apply_site_name_choices, apply_site_name_fields, resolve_site_name
 
 
 class StartScanForm(forms.Form):
-    site_name = forms.CharField(
-        label="Site name",
-        max_length=120,
-        widget=forms.TextInput(
-            attrs={
-                "class": "form-input",
-                "placeholder": "e.g. Main Office, Warehouse B, 123 Oak St",
-                "autofocus": True,
-            }
-        ),
-        help_text="Label this scan session so items and reports stay organized by location.",
-    )
+    def __init__(self, *args, known_site_names=None, default_site_name="", **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_site_name_choices(self, known_site_names, default_site_name=default_site_name)
+        self.fields["site_name"].help_text = (
+            "Choose the site you are scanning. Items and reports will be grouped under this name."
+        )
 
-    def clean_site_name(self):
-        value = (self.cleaned_data.get("site_name") or "").strip()
-        if not value:
-            raise forms.ValidationError("Enter a site name to start scanning.")
-        return value
+    def clean(self):
+        cleaned_data = super().clean()
+        resolve_site_name(cleaned_data, errors_form=self)
+        return cleaned_data
 
 
 class ScanAssetForm(forms.ModelForm):

@@ -61,7 +61,8 @@ def start_scan(request):
     if not request.user.can_manage_assets():
         return redirect("accounts:dashboard")
 
-    form = StartScanForm(request.POST or None)
+    known_sites = get_known_site_names(request)
+    form = StartScanForm(request.POST or None, known_site_names=known_sites)
     if request.method == "POST" and form.is_valid():
         site_name = form.cleaned_data["site_name"]
         key = f"scan_{uuid.uuid4().hex[:12]}"

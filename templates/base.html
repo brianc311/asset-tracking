@@ -36,6 +36,7 @@
     <a href="{% url 'statuspage:public' %}" target="_blank">Status</a>
     {% if user.can_manage_status %}<a href="{% url 'statuspage:manage' %}">Status</a>{% endif %}
     {% if user.can_manage_branding %}<a href="{% url 'branding:console' %}">Branding</a>{% endif %}
+    {% if user.can_view_access_logs %}<a href="{% url 'accounts:security_logs' %}">Security</a>{% endif %}
     <button type="button" onclick="toggleTheme()" title="Toggle theme">🌓</button>
     <a href="{% url 'accounts:logout' %}">Logout</a>
   </nav>

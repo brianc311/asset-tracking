@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<div class="toolbar no-print" style="margin-bottom:1rem">
+  <a href="{% url 'assets:site_reports' %}" class="btn btn-secondary">← All site reports</a>
+  <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+  <a href="{% url 'assets:report' %}?site={{ site_name|urlencode }}&export=pdf" class="btn btn-secondary">Download PDF</a>
+  <a href="{% url 'assets:email_report' %}?site={{ site_name|urlencode }}" class="btn btn-secondary">Email report</a>
+</div>
+
+<h1 class="page-title">{{ title }}</h1>
+<p class="page-subtitle">{{ total }} active asset{{ total|pluralize }} · Generated {% now "M j, Y g:i A" %}</p>
+
+{% if assets %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Comments</th></tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+        <tr>
+          <td>{{ asset.asset_number|default:"—" }}</td>
+          <td><code>{{ asset.barcode_value }}</code></td>
+          <td>{{ asset.site_name|default:"—" }}</td>
+          <td>{{ asset.product_name }}</td>
+          <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.model_number|default:"—" }}</td>
+          <td>{{ asset.location|default:"—" }}</td>
+          <td>{{ asset.comments|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <p style="margin:0;color:var(--text-muted)">No active assets for this site.</p>
+</div>
+{% endif %}
+{% endblock %}

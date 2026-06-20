@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Site Reports — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Site Reports</h1>
+<p class="page-subtitle">Open a report for each site on the web, then print, download PDF, or email it.</p>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Site</th><th>Active assets</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for row in site_rows %}
+        <tr>
+          <td><strong>{{ row.name }}</strong></td>
+          <td>{{ row.count }}</td>
+          <td class="no-print">
+            <a href="{% url 'assets:site_report' %}?site={{ row.name|urlencode }}">View report</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No sites with assets yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

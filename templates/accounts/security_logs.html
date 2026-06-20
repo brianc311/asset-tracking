@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Access Logs — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Access &amp; Security Logs</h1>
+<p class="page-subtitle">Track page visits and login attempts by IP address. Block suspicious addresses.</p>
+
+<div class="card-grid">
+  <div class="card">
+    <h2 style="margin-top:0">Block an IP</h2>
+    <form method="post" action="{% url 'accounts:block_ip' %}">
+      {% csrf_token %}
+      <label class="form-label">IP address</label>
+      <input type="text" name="ip_address" class="form-input" placeholder="e.g. 192.168.1.50" required>
+      <label class="form-label" style="margin-top:0.75rem">Reason (optional)</label>
+      <input type="text" name="reason" class="form-input" placeholder="Failed login attempts">
+      <button type="submit" class="btn btn-danger" style="margin-top:1rem">Block IP</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Currently blocked</h2>
+    {% if blocked_ips %}
+    <ul style="margin:0;padding-left:1.25rem">
+      {% for block in blocked_ips %}
+      <li style="margin-bottom:0.75rem">
+        <code>{{ block.ip_address }}</code>
+        {% if block.reason %} — {{ block.reason }}{% endif %}
+        <form method="post" action="{% url 'accounts:unblock_ip' block.pk %}" style="display:inline;margin-left:0.5rem">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary" style="padding:0.15rem 0.5rem;font-size:0.75rem">Unblock</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p style="margin:0;color:var(--text-muted)">No blocked IPs.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <h2 style="margin-top:0">Most active IPs</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>IP</th><th>Events</th><th></th></tr></thead>
+        <tbody>
+          {% for row in ip_summary %}
+          <tr>
+            <td><code>{{ row.ip_address }}</code></td>
+            <td>{{ row.total }}</td>
+            <td>
+              <form method="post" action="{% url 'accounts:block_ip' %}">
+                {% csrf_token %}
+                <input type="hidden" name="ip_address" value="{{ row.ip_address }}">
+                <input type="hidden" name="reason" value="Blocked from access log">
+                <button type="submit" class="btn btn-secondary" style="padding:0.2rem 0.5rem;font-size:0.75rem">Block</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No activity yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Failed logins by IP</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>IP</th><th>Failures</th><th></th></tr></thead>
+        <tbody>
+          {% for row in failed_logins %}
+          <tr>
+            <td><code>{{ row.ip_address }}</code></td>
+            <td>{{ row.total }}</td>
+            <td>
+              <form method="post" action="{% url 'accounts:block_ip' %}">
+                {% csrf_token %}
+                <input type="hidden" name="ip_address" value="{{ row.ip_address }}">
+                <input type="hidden" name="reason" value="Repeated failed logins">
+                <button type="submit" class="btn btn-danger" style="padding:0.2rem 0.5rem;font-size:0.75rem">Block</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No failed logins recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Recent activity (last 500)</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Time</th><th>IP</th><th>Event</th><th>Path</th><th>User</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at|date:"M j, Y g:i:s A" }}</td>
+          <td><code>{{ log.ip_address }}</code></td>
+          <td>
+            {% if log.event_type == 'login_failed' %}
+            <span class="badge badge-danger">{{ log.get_event_type_display }}</span>
+            {% elif log.event_type == 'login_success' %}
+            <span class="badge badge-success">{{ log.get_event_type_display }}</span>
+            {% elif log.event_type == 'access_blocked' %}
+            <span class="badge badge-warning">{{ log.get_event_type_display }}</span>
+            {% else %}
+            <span class="badge">{{ log.get_event_type_display }}</span>
+            {% endif %}
+          </td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">{{ log.path|default:"—" }}</td>
+          <td>{{ log.username|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No logs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

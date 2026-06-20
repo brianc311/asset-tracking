@@ -133,6 +133,48 @@ def bulk_action(request):
     return redirect("assets:list")
 
 
+def _site_report_queryset(site_name):
+    return Asset.objects.filter(site_name=site_name, is_archived=False).order_by("asset_number")
+
+
+@login_required
+def site_reports_index(request):
+    if not request.user.can_manage_assets():
+        return redirect("accounts:dashboard")
+
+    sites = get_site_names_with_assets()
+    site_rows = []
+    for name in sites:
+        count = Asset.objects.filter(site_name=name, is_archived=False).count()
+        site_rows.append({"name": name, "count": count})
+
+    return render(request, "assets/site_reports.html", {"site_rows": site_rows})
+
+
+@login_required
+def site_report_view(request):
+    if not request.user.can_manage_assets():
+        return redirect("accounts:dashboard")
+
+    site_name = request.GET.get("site", "").strip()
+    if not site_name:
+        return redirect("assets:site_reports")
+
+    assets = _site_report_queryset(site_name)
+    title = f"Asset Report — {site_name}"
+    return render(
+        request,
+        "assets/site_report.html",
+        {
+            "assets": assets,
+            "site_name": site_name,
+            "title": title,
+            "total": assets.count(),
+            "email_configured": email_is_configured(),
+        },
+    )
+
+
 @login_required
 def print_report(request):
     ids_param = request.GET.get("ids", "")
