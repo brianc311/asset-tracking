@@ -70,13 +70,13 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
 
     elements = [Paragraph(title, title_style), Spacer(1, 0.2 * inch)]
 
-    data = [["#", "Barcode", "Product", "Site", "Serial", "Model", "Location", "Comments"]]
+    data = [["#", "Barcode", "Site", "Product", "Serial", "Model", "Location", "Comments"]]
     for asset in assets:
         data.append([
             str(asset.asset_number or "—"),
             asset.barcode_value,
-            asset.product_name[:30],
             asset.site_name[:20] or "—",
+            asset.product_name[:30],
             asset.serial_number[:20] or "—",
             asset.model_number[:20] or "—",
             asset.location[:20] or "—",
