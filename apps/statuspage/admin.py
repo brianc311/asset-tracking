@@ -8,6 +8,7 @@ from apps.statuspage.models import Incident, SystemComponent
 class SystemComponentAdmin(admin.ModelAdmin):
     list_display = ("name", "status", "display_order")
     list_editable = ("status", "display_order")
+    search_fields = ("name", "status_reason")
 
 
 @admin.register(Incident, site=recaptcha_admin_site)

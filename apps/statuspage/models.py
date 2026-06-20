@@ -7,10 +7,8 @@ User = get_user_model()
 class SystemComponent(models.Model):
     class Status(models.TextChoices):
         OPERATIONAL = "operational", "Operational"
-        DEGRADED = "degraded", "Degraded Performance"
-        PARTIAL = "partial", "Partial Outage"
-        MAJOR = "major", "Major Outage"
-        MAINTENANCE = "maintenance", "Maintenance"
+        DEGRADED = "degraded", "Degraded"
+        OFFLINE = "offline", "Offline"
 
     name = models.CharField(max_length=120)
     description = models.CharField(max_length=255, blank=True)
@@ -18,6 +16,10 @@ class SystemComponent(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.OPERATIONAL,
+    )
+    status_reason = models.TextField(
+        blank=True,
+        help_text="Shown on the public status page when degraded or offline.",
     )
     display_order = models.PositiveIntegerField(default=0)
 

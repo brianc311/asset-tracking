@@ -2,7 +2,81 @@
 {% block title %}Manage Status — {{ branding.site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">Status Management</h1>
-<p class="page-subtitle">Post outages and update component health for the public status page</p>
+<p class="page-subtitle">Update component health and post incidents for the public status page</p>
+
+<div class="card" style="margin-bottom:1rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+    <div>
+      <h2 style="margin:0">System Components</h2>
+      <p style="margin:0.25rem 0 0;color:var(--text-muted);font-size:0.875rem">
+        Changes appear immediately on the <a href="{% url 'statuspage:public' %}">public status page</a>.
+      </p>
+    </div>
+    <a href="{% url 'statuspage:public' %}" class="btn btn-secondary">View Status Page</a>
+  </div>
+
+  <form method="post" id="component-status-form">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="update_components">
+    <div class="table-wrap">
+      <table class="data-table component-status-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th style="width:11rem">Status</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in component_rows %}
+          <tr class="component-row" data-component-row>
+            <td>
+              <strong>{{ row.component.name }}</strong>
+              {% if row.component.description %}
+              <br><small style="color:var(--text-muted)">{{ row.component.description }}</small>
+              {% endif %}
+            </td>
+            <td>
+              <select
+                name="component_{{ row.component.pk }}_status"
+                class="form-input component-status-select"
+                aria-label="Status for {{ row.component.name }}"
+              >
+                {% for value, label in row.component.Status.choices %}
+                <option value="{{ value }}" {% if row.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <textarea
+                name="component_{{ row.component.pk }}_status_reason"
+                class="form-input component-reason-input"
+                rows="2"
+                placeholder="Why is this degraded or offline?"
+              >{{ row.reason }}</textarea>
+              {% if row.errors %}
+              <p class="form-error" style="color:var(--danger);font-size:0.8rem;margin:0.25rem 0 0">
+                {% for field, field_errors in row.errors.items %}
+                  {% for error in field_errors %}{{ error }}{% endfor %}
+                {% endfor %}
+              </p>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3">No components yet. Add one below or run <code>python manage.py setup_site</code>.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if component_rows %}
+    <div style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center">
+      <button type="submit" class="btn btn-primary">Save Component Status</button>
+      <span style="font-size:0.875rem;color:var(--text-muted)">Reason is required when status is Degraded or Offline.</span>
+    </div>
+    {% endif %}
+  </form>
+</div>
 
 <div class="card-grid">
   <div class="card">
@@ -52,4 +126,28 @@
     </table>
   </div>
 </div>
+
+<script>
+(function () {
+  function syncReasonRow(row) {
+    const select = row.querySelector('.component-status-select');
+    const reason = row.querySelector('.component-reason-input');
+    if (!select || !reason) return;
+    const needsReason = select.value === 'degraded' || select.value === 'offline';
+    reason.disabled = !needsReason;
+    reason.required = needsReason;
+    reason.closest('td').style.opacity = needsReason ? '1' : '0.55';
+    if (!needsReason) {
+      reason.removeAttribute('placeholder');
+    } else {
+      reason.placeholder = 'Why is this degraded or offline?';
+    }
+  }
+
+  document.querySelectorAll('[data-component-row]').forEach((row) => {
+    syncReasonRow(row);
+    row.querySelector('.component-status-select')?.addEventListener('change', () => syncReasonRow(row));
+  });
+})();
+</script>
 {% endblock %}
