@@ -24,10 +24,12 @@ pip install -r requirements.txt
 copy .env.example .env
 python manage.py migrate
 python manage.py setup_site
-python manage.py runserver
+python manage.py runserver 0.0.0.0:8000
 ```
 
-Open http://127.0.0.1:8000 — login with `admin` / `admin123` (change immediately).
+Open http://127.0.0.1:8000 on your laptop, or http://YOUR-LAPTOP-IP:8000/scan/ from your phone (same Wi‑Fi).
+
+**Important:** Use `runserver 0.0.0.0:8000` (not plain `runserver`) so your phone can connect. On Windows you can double-click `run_dev.bat` instead.
 
 ### reCAPTCHA keys
 
