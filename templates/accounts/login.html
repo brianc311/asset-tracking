@@ -20,7 +20,14 @@
 
     {% if form.errors %}
     <div class="card" style="border-left:4px solid var(--danger);margin-bottom:1rem;padding:0.75rem">
-      Invalid credentials or reCAPTCHA failed. Please try again.
+      {% if form.captcha.errors %}
+      <strong>reCAPTCHA error:</strong> {{ form.captcha.errors.0 }}
+      <p style="font-size:0.875rem;margin:0.5rem 0 0">Real keys only work on domains listed in <a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noopener">Google reCAPTCHA admin</a> (e.g. localhost, 127.0.0.1, your domain). Private IPs like 192.168.x.x cannot be added — use test keys for phone dev.</p>
+      {% elif form.non_field_errors %}
+      {{ form.non_field_errors.0 }}
+      {% else %}
+      Invalid credentials. Please try again.
+      {% endif %}
     </div>
     {% endif %}
 
