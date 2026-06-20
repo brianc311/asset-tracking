@@ -22,7 +22,7 @@
   <div class="toolbar">
     {% if user.can_manage_assets %}
     <a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a>
-    <a href="{% url 'scan:home' %}" class="btn btn-success">📱 Scan</a>
+    <a href="{% url 'scan:start' %}" class="btn btn-success">📱 Scan</a>
     {% endif %}
     <a href="{% url 'assets:list' %}" class="btn btn-secondary">View All Assets</a>
     <a href="{% url 'assets:report' %}" class="btn btn-secondary" target="_blank">Print Report</a>

@@ -116,7 +116,11 @@ def print_report(request):
     elif session_key and session_key in request.session:
         ids = request.session[session_key]
         assets = Asset.objects.filter(pk__in=ids)
-        title = "Scan Session Report"
+        site_name = request.GET.get("site", "").strip()
+        if not site_name:
+            meta = request.session.get("scan_sessions_meta", {}).get(session_key, {})
+            site_name = meta.get("site_name", "")
+        title = f"Scan Session — {site_name}" if site_name else "Scan Session Report"
     else:
         assets = Asset.objects.filter(is_archived=False)
         title = "All Active Assets Report"

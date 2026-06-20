@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
 <h1 class="page-title">{% if existing %}Update{% else %}Add{% endif %} Asset</h1>
-<p class="page-subtitle">Fill in each field manually or tap <strong>Scan</strong> next to any field to scan its barcode independently.</p>
+<p class="page-subtitle">Site: <strong>{{ site_name }}</strong> — fill in each field manually or tap <strong>Scan</strong> next to any field to scan its barcode independently.</p>
 {% if barcode %}<p class="page-subtitle">Main barcode: <code>{{ barcode }}</code></p>{% endif %}
 {% if existing %}<div class="card" style="margin-bottom:1rem;border-left:4px solid var(--warning)">Existing asset found — update fields below.</div>{% endif %}
 

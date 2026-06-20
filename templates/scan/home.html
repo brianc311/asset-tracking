@@ -7,6 +7,22 @@
 <h1 class="page-title">{{ branding.scan_page_title }}</h1>
 <p class="page-subtitle">Scan a main barcode, or add an item and scan each field separately (serial, model, location, etc.)</p>
 
+<div class="card" style="margin-bottom:1rem;border-left:4px solid var(--primary)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+    <div>
+      <p style="margin:0;font-size:0.875rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">Current site</p>
+      <h2 style="margin:0.25rem 0 0;font-size:1.35rem">{{ site_name }}</h2>
+      {% if started_at_display %}
+      <p style="margin:0.35rem 0 0;font-size:0.875rem;color:var(--text-muted)">Session started {{ started_at_display }}</p>
+      {% endif %}
+    </div>
+    <form method="post" action="{% url 'scan:end' %}" id="end-scan-form" style="margin:0">
+      {% csrf_token %}
+      <button type="button" class="btn btn-secondary" id="end-scan-btn">New Site Scan</button>
+    </form>
+  </div>
+</div>
+
 <div class="toolbar no-print" style="margin-bottom:1rem">
   <a href="{% url 'scan:register' %}" class="btn btn-primary">+ Add Item (scan fields independently)</a>
 </div>
@@ -42,8 +58,8 @@
 </div>
 
 <div class="toolbar no-print">
-  <a href="{% url 'assets:report' %}?session={{ session_key }}" class="btn btn-primary" target="_blank">Print Session</a>
-  <a href="{% url 'assets:report' %}?session={{ session_key }}&export=pdf" class="btn btn-secondary">Export PDF</a>
+  <a href="{% url 'assets:report' %}?session={{ session_key }}&site={{ site_name|urlencode }}" class="btn btn-primary" target="_blank">Print Session</a>
+  <a href="{% url 'assets:report' %}?session={{ session_key }}&site={{ site_name|urlencode }}&export=pdf" class="btn btn-secondary">Export PDF</a>
   <form method="post" action="{% url 'scan:clear' %}" style="display:inline" id="clear-form">
     {% csrf_token %}
     <button type="button" class="btn btn-danger" id="clear-btn">Clear Session</button>
@@ -51,7 +67,7 @@
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0">Session Items</h2>
+  <h2 style="margin-top:0">Session Items — {{ site_name }}</h2>
   <div class="table-wrap">
     <table class="data-table">
       <thead><tr><th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Model</th></tr></thead>
@@ -153,8 +169,16 @@ document.getElementById('stop-scan')?.addEventListener('click', () => {
 });
 
 document.getElementById('clear-btn')?.addEventListener('click', async () => {
-  const ok = await AppModal.confirm('Clear session', 'Remove all items from this scan session?');
+  const ok = await AppModal.confirm('Clear session', 'Remove all items from this scan session? The site name will stay the same.');
   if (ok) document.getElementById('clear-form').submit();
+});
+
+document.getElementById('end-scan-btn')?.addEventListener('click', async () => {
+  const ok = await AppModal.confirm(
+    'Start new site scan',
+    'End this scan session and start fresh with a different site name? Items already saved to the database are kept.'
+  );
+  if (ok) document.getElementById('end-scan-form').submit();
 });
 </script>
 {% endblock %}

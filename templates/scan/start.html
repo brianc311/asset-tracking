@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Start Scan — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Start a Scan Session</h1>
+<p class="page-subtitle">Name the site or location you are scanning. All items in this session will be grouped under that name.</p>
+
+<div class="card" style="max-width:480px">
+  <form method="post">
+    {% csrf_token %}
+    <label class="form-label" for="{{ form.site_name.id_for_label }}">{{ form.site_name.label }}</label>
+    {{ form.site_name }}
+    {% if form.site_name.help_text %}
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 0">{{ form.site_name.help_text }}</p>
+    {% endif %}
+    {% if form.site_name.errors %}
+    <p style="color:var(--danger);font-size:0.875rem;margin:0.5rem 0 0">{{ form.site_name.errors.0 }}</p>
+    {% endif %}
+    <div class="toolbar" style="margin-top:1.25rem">
+      <button type="submit" class="btn btn-primary">Start Scanning</button>
+      <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

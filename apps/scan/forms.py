@@ -1,12 +1,27 @@
 from django import forms
-from django_recaptcha.fields import ReCaptchaField
-from django_recaptcha.widgets import ReCaptchaV2Checkbox
 
 from apps.assets.models import Asset
 
 
-class ScanLoginForm(forms.Form):
-    captcha = ReCaptchaField(widget=ReCaptchaV2Checkbox)
+class StartScanForm(forms.Form):
+    site_name = forms.CharField(
+        label="Site name",
+        max_length=120,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-input",
+                "placeholder": "e.g. Main Office, Warehouse B, 123 Oak St",
+                "autofocus": True,
+            }
+        ),
+        help_text="Label this scan session so items and reports stay organized by location.",
+    )
+
+    def clean_site_name(self):
+        value = (self.cleaned_data.get("site_name") or "").strip()
+        if not value:
+            raise forms.ValidationError("Enter a site name to start scanning.")
+        return value
 
 
 class ScanAssetForm(forms.ModelForm):
