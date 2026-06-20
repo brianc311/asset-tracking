@@ -60,6 +60,7 @@
 <div class="toolbar no-print">
   <a href="{% url 'assets:report' %}?session={{ session_key }}&site={{ site_name|urlencode }}" class="btn btn-primary" target="_blank">Print Session</a>
   <a href="{% url 'assets:report' %}?session={{ session_key }}&site={{ site_name|urlencode }}&export=pdf" class="btn btn-secondary">Export PDF</a>
+  <a href="{% url 'assets:email_report' %}?site={{ site_name|urlencode }}" class="btn btn-secondary">Email Site Report</a>
   <form method="post" action="{% url 'scan:clear' %}" style="display:inline" id="clear-form">
     {% csrf_token %}
     <button type="button" class="btn btn-danger" id="clear-btn">Clear Session</button>

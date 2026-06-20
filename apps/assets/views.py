@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -5,9 +6,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.assets.barcode_utils import assets_pdf_response, barcode_image_response
-from apps.assets.forms import AssetForm, BulkActionForm
+from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
+from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
 from apps.assets.models import Asset
-from apps.assets.site_names import get_known_site_names
+from apps.assets.site_names import get_known_site_names, get_site_names_with_assets
 
 
 def _require_asset_access(view_func):
@@ -135,19 +137,22 @@ def bulk_action(request):
 def print_report(request):
     ids_param = request.GET.get("ids", "")
     session_key = request.GET.get("session", "")
+    site_filter = request.GET.get("site", "").strip()
 
     if ids_param:
         ids = [int(x) for x in ids_param.split(",") if x.strip().isdigit()]
         assets = Asset.objects.filter(pk__in=ids, is_archived=False)
         title = "Selected Assets Report"
+    elif site_filter:
+        assets = Asset.objects.filter(site_name=site_filter, is_archived=False)
+        title = f"Asset Report — {site_filter}"
     elif session_key and session_key in request.session:
         ids = request.session[session_key]
         assets = Asset.objects.filter(pk__in=ids)
-        site_name = request.GET.get("site", "").strip()
-        if not site_name:
+        if not site_filter:
             meta = request.session.get("scan_sessions_meta", {}).get(session_key, {})
-            site_name = meta.get("site_name", "")
-        title = f"Scan Session — {site_name}" if site_name else "Scan Session Report"
+            site_filter = meta.get("site_name", "")
+        title = f"Scan Session — {site_filter}" if site_filter else "Scan Session Report"
     else:
         assets = Asset.objects.filter(is_archived=False)
         title = "All Active Assets Report"
@@ -160,4 +165,59 @@ def print_report(request):
         request,
         "assets/print_report.html",
         {"assets": assets, "title": title, "total": assets.count()},
+    )
+
+
+@_require_asset_access
+def email_site_report(request):
+    site_names = get_site_names_with_assets()
+    default_site = _active_scan_site_name(request)
+    default_recipient = request.user.email or ""
+    query_site = request.GET.get("site", "").strip()
+
+    form = SiteReportEmailForm(
+        request.POST or None,
+        site_names=site_names,
+        default_site=query_site or default_site,
+        default_recipient=default_recipient,
+    )
+
+    if request.method == "POST" and form.is_valid():
+        if not email_is_configured():
+            messages.error(
+                request,
+                "Gmail is not configured yet. Add EMAIL_HOST_USER and EMAIL_HOST_PASSWORD to your .env file.",
+            )
+        else:
+            site_name = form.cleaned_data["site_name"]
+            recipient = form.cleaned_data["recipient"]
+            assets = Asset.objects.filter(site_name=site_name, is_archived=False).order_by("asset_number")
+            if not assets.exists():
+                messages.error(request, f"No active assets found for {site_name}.")
+            else:
+                try:
+                    send_site_asset_report(
+                        site_name=site_name,
+                        recipient=recipient,
+                        assets=assets,
+                        sender_name=request.user.get_full_name() or request.user.username,
+                    )
+                    messages.success(
+                        request,
+                        f"Report for {site_name} ({assets.count()} items) sent to {recipient}.",
+                    )
+                    return redirect("assets:list")
+                except EmailNotConfiguredError as exc:
+                    messages.error(request, str(exc))
+                except Exception as exc:
+                    messages.error(request, f"Could not send email: {exc}")
+
+    return render(
+        request,
+        "assets/email_report.html",
+        {
+            "form": form,
+            "email_configured": email_is_configured(),
+            "site_names": site_names,
+        },
     )

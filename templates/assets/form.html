@@ -7,9 +7,12 @@
 <div class="card" style="max-width:640px">
   <form method="post" enctype="multipart/form-data" id="asset-form">
     {% csrf_token %}
-    {% include "assets/site_name_datalist.html" %}
+
+    {% include "assets/site_name_fields.html" %}
+
     {% for field in form %}
-      {% if field.name == 'photo' %}
+      {% if field.name == 'site_name' or field.name == 'new_site_name' %}
+      {% elif field.name == 'photo' %}
         {% include "assets/photo_picker.html" with field=field asset=asset %}
       {% else %}
         <label class="form-label">{{ field.label }}</label>
@@ -28,5 +31,6 @@
 
 {% block extra_js %}
 <script src="{% static 'js/photo-picker.js' %}"></script>
+<script src="{% static 'js/site-name-select.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', () => initPhotoPicker('.photo-picker'));</script>
 {% endblock %}

@@ -13,20 +13,13 @@
 <div class="card" style="max-width:640px">
   <form method="post" enctype="multipart/form-data" id="scan-register-form">
     {% csrf_token %}
-    {% include "assets/site_name_datalist.html" %}
+
+    {% include "assets/site_name_fields.html" with scan_session_site=site_name %}
 
     <div class="field-row">
       <label class="form-label" for="{{ form.asset_number.id_for_label }}">{{ form.asset_number.label }}</label>
       {{ form.asset_number }}
       {% if form.asset_number.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0">{{ form.asset_number.help_text }}</p>{% endif %}
-    </div>
-
-    <div class="field-row">
-      <label class="form-label" for="{{ form.site_name.id_for_label }}">{{ form.site_name.label }}</label>
-      {{ form.site_name }}
-      {% if form.site_name.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0">{{ form.site_name.help_text }}</p>{% endif %}
-      {% if form.site_name.errors %}<p style="color:var(--danger);font-size:0.875rem;margin:0.25rem 0 0">{{ form.site_name.errors.0 }}</p>{% endif %}
-      {% if site_name %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0">Current scan session: <strong>{{ site_name }}</strong></p>{% endif %}
     </div>
 
     <div class="field-row">
@@ -94,6 +87,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/photo-picker.js' %}"></script>
+<script src="{% static 'js/site-name-select.js' %}"></script>
 <script src="{% static 'js/field-scanner.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', () => initPhotoPicker('.photo-picker'));</script>
 {% endblock %}

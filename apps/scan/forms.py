@@ -1,7 +1,9 @@
 from django import forms
 
+from apps.assets.forms import ASSET_FIELD_ORDER
 from apps.assets.models import Asset
-from apps.assets.site_names import configure_site_name_field, get_known_site_names
+from apps.assets.site_names import apply_site_name_fields, resolve_site_name
+
 
 class StartScanForm(forms.Form):
     site_name = forms.CharField(
@@ -28,11 +30,11 @@ class ScanAssetForm(forms.ModelForm):
     class Meta:
         model = Asset
         fields = [
+            "site_name",
             "asset_number",
             "product_name",
             "serial_number",
             "model_number",
-            "site_name",
             "location",
             "comments",
             "photo",
@@ -46,7 +48,6 @@ class ScanAssetForm(forms.ModelForm):
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "What is the product?"}),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
             "model_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Model number"}),
-            "site_name": forms.TextInput(),
             "location": forms.TextInput(attrs={"class": "form-input", "placeholder": "Room, shelf, or specific spot"}),
             "comments": forms.Textarea(attrs={"class": "form-input", "rows": 2, "placeholder": "Comments"}),
             "barcode_type": forms.Select(attrs={"class": "form-input"}),
@@ -58,21 +59,21 @@ class ScanAssetForm(forms.ModelForm):
         self.default_site_name = default_site_name
         self.known_site_names = known_site_names or []
         super().__init__(*args, **kwargs)
-        configure_site_name_field(self.fields["site_name"], self.known_site_names)
-        self.fields["site_name"].label = "Site name"
+        apply_site_name_fields(
+            self,
+            self.known_site_names,
+            default_site_name=default_site_name,
+        )
         self.fields["barcode_value"].required = False
         self.fields["asset_number"].required = False
         self.fields["asset_number"].help_text = "Leave blank to auto-assign the next number."
-        if default_site_name and not self.initial.get("site_name") and not getattr(self.instance, "site_name", ""):
-            self.fields["site_name"].initial = default_site_name
+        self.order_fields(ASSET_FIELD_ORDER)
 
-    def clean_site_name(self):
-        value = (self.cleaned_data.get("site_name") or "").strip()
-        if not value:
-            value = (self.default_site_name or "").strip()
-        if not value:
-            raise forms.ValidationError("Select or enter a site name for this asset.")
-        return value
+    def clean(self):
+        cleaned_data = super().clean()
+        resolve_site_name(cleaned_data, default_site_name=self.default_site_name, errors_form=self)
+        return cleaned_data
+
     def clean_asset_number(self):
         value = self.cleaned_data.get("asset_number")
         return value or None

@@ -56,7 +56,7 @@ def barcode_image_response(asset: Asset) -> HttpResponse:
     return response
 
 
-def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
+def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch)
     styles = getSampleStyleSheet()
@@ -101,6 +101,10 @@ def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
 
     doc.build(elements)
     buffer.seek(0)
-    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    return buffer.getvalue()
+
+
+def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
+    response = HttpResponse(assets_pdf_bytes(assets, title=title), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{title.replace(" ", "_").lower()}.pdf"'
     return response

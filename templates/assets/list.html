@@ -10,6 +10,7 @@
     {% if show_archived %}Show Active{% else %}Show Archived{% endif %}
   </a>
   <a href="{% url 'assets:report' %}" class="btn btn-secondary" target="_blank">Print All</a>
+  {% if user.can_manage_assets %}<a href="{% url 'assets:email_report' %}" class="btn btn-secondary">Email Site Report</a>{% endif %}
   <form method="get" style="margin-left:auto;display:flex;gap:0.5rem">
     <input type="hidden" name="archived" value="{% if show_archived %}1{% else %}0{% endif %}">
     <input type="text" name="q" value="{{ query }}" class="form-input" style="margin:0;width:200px" placeholder="Search...">

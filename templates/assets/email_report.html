@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Email Site Report — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Email Site Report</h1>
+<p class="page-subtitle">Send a PDF inventory report for one site to any email address.</p>
+
+{% if not email_configured %}
+<div class="card" style="margin-bottom:1rem;border-left:4px solid var(--warning)">
+  <h2 style="margin-top:0">Gmail setup required</h2>
+  <p style="margin:0 0 0.75rem">Add these lines to your <code>.env</code> file, then restart Django:</p>
+  <pre style="background:var(--bg-muted);padding:1rem;border-radius:8px;overflow:auto;font-size:0.85rem;margin:0">EMAIL_HOST_USER=yourname@gmail.com
+EMAIL_HOST_PASSWORD=your-16-char-app-password
+DEFAULT_FROM_EMAIL=yourname@gmail.com</pre>
+  <p style="margin:0.75rem 0 0;font-size:0.875rem;color:var(--text-muted)">
+    Gmail requires an <strong>App Password</strong> (not your normal Gmail password).
+    Enable 2-Step Verification, then create one at
+    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Google App Passwords</a>.
+  </p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:520px">
+  {% if site_names %}
+  <form method="post">
+    {% csrf_token %}
+    <label class="form-label" for="{{ form.site_name.id_for_label }}">{{ form.site_name.label }}</label>
+    {{ form.site_name }}
+    {% if form.site_name.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0.75rem">{{ form.site_name.help_text }}</p>{% endif %}
+    {% if form.site_name.errors %}<p style="color:var(--danger);font-size:0.875rem">{{ form.site_name.errors.0 }}</p>{% endif %}
+
+    <label class="form-label" for="{{ form.recipient.id_for_label }}">{{ form.recipient.label }}</label>
+    {{ form.recipient }}
+    {% if form.recipient.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0.75rem">{{ form.recipient.help_text }}</p>{% endif %}
+    {% if form.recipient.errors %}<p style="color:var(--danger);font-size:0.875rem">{{ form.recipient.errors.0 }}</p>{% endif %}
+
+    <div class="toolbar" style="margin-top:1.25rem">
+      <button type="submit" class="btn btn-primary" {% if not email_configured %}disabled{% endif %}>Send Report</button>
+      <a href="{% url 'assets:list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+  {% else %}
+  <p style="margin:0;color:var(--text-muted)">No assets with a site name yet. Create assets and assign a site first.</p>
+  <p style="margin:1rem 0 0"><a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a></p>
+  {% endif %}
+</div>
+{% endblock %}

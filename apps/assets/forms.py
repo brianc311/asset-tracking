@@ -1,18 +1,32 @@
 from django import forms
 
 from apps.assets.models import Asset
-from apps.assets.site_names import configure_site_name_field
+from apps.assets.site_names import apply_site_name_fields, resolve_site_name
+
+ASSET_FIELD_ORDER = [
+    "site_name",
+    "new_site_name",
+    "asset_number",
+    "product_name",
+    "serial_number",
+    "model_number",
+    "location",
+    "comments",
+    "photo",
+    "barcode_type",
+    "barcode_value",
+]
 
 
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Asset
         fields = [
+            "site_name",
             "asset_number",
             "product_name",
             "serial_number",
             "model_number",
-            "site_name",
             "location",
             "comments",
             "photo",
@@ -26,7 +40,6 @@ class AssetForm(forms.ModelForm):
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Product name"}),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
             "model_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Model number"}),
-            "site_name": forms.TextInput(),
             "location": forms.TextInput(attrs={"class": "form-input", "placeholder": "Room, shelf, or specific spot"}),
             "comments": forms.Textarea(attrs={"class": "form-input", "rows": 3, "placeholder": "Comments"}),
             "barcode_type": forms.Select(attrs={"class": "form-input"}),
@@ -38,16 +51,20 @@ class AssetForm(forms.ModelForm):
         self.known_site_names = known_site_names or []
         self.default_site_name = default_site_name
         super().__init__(*args, **kwargs)
-        configure_site_name_field(self.fields["site_name"], self.known_site_names)
-        self.fields["site_name"].label = "Site name"
+        apply_site_name_fields(
+            self,
+            self.known_site_names,
+            default_site_name=default_site_name,
+        )
         self.fields["barcode_value"].required = False
         self.fields["asset_number"].required = False
         self.fields["asset_number"].help_text = "Leave blank to auto-assign the next number."
-        if not self.instance.pk and default_site_name and not self.initial.get("site_name"):
-            self.fields["site_name"].initial = default_site_name
+        self.order_fields(ASSET_FIELD_ORDER)
 
-    def clean_site_name(self):
-        return (self.cleaned_data.get("site_name") or "").strip()
+    def clean(self):
+        cleaned_data = super().clean()
+        resolve_site_name(cleaned_data, default_site_name=self.default_site_name, errors_form=self)
+        return cleaned_data
 
     def clean_asset_number(self):
         value = self.cleaned_data.get("asset_number")
@@ -63,3 +80,35 @@ class BulkActionForm(forms.Form):
     ]
     action = forms.ChoiceField(choices=ACTION_CHOICES)
     asset_ids = forms.CharField(widget=forms.HiddenInput())
+
+
+class SiteReportEmailForm(forms.Form):
+    site_name = forms.ChoiceField(
+        label="Site",
+        widget=forms.Select(attrs={"class": "form-input"}),
+        help_text="Choose the site to include in the PDF report.",
+    )
+    recipient = forms.EmailField(
+        label="Send to email",
+        widget=forms.EmailInput(attrs={"class": "form-input", "placeholder": "you@gmail.com"}),
+        help_text="The report PDF will be attached to this address.",
+    )
+
+    def __init__(self, *args, site_names=None, default_site="", default_recipient="", **kwargs):
+        super().__init__(*args, **kwargs)
+        names = list(site_names or [])
+        if not names:
+            self.fields["site_name"].choices = [("", "No sites with assets yet")]
+            self.fields["site_name"].disabled = True
+        else:
+            self.fields["site_name"].choices = [("", "Select a site…")] + [(n, n) for n in names]
+            if default_site and default_site in names:
+                self.fields["site_name"].initial = default_site
+        if default_recipient:
+            self.fields["recipient"].initial = default_recipient
+
+    def clean_site_name(self):
+        value = self.cleaned_data.get("site_name", "")
+        if not value:
+            raise forms.ValidationError("Select a site for the report.")
+        return value
