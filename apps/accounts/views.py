@@ -15,7 +15,7 @@ class AppLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
-        return reverse_lazy("dashboard")
+        return reverse_lazy("accounts:dashboard")
 
 
 class AppLogoutView(LogoutView):
