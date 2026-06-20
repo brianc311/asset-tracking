@@ -17,6 +17,22 @@
   </div>
 </div>
 
+{% if site_stats %}
+<h2 class="section-title" style="margin-top:0.5rem">Active Assets by Site</h2>
+<div class="card-grid">
+  {% for stat in site_stats %}
+  <a
+    href="{% if stat.is_unassigned %}{% url 'assets:list' %}?site=__unassigned__{% else %}{% url 'assets:site_report' %}?site={{ stat.name|urlencode }}{% endif %}"
+    class="card stat-card{% if stat.is_unassigned %} stat-card-muted{% endif %}"
+    style="text-decoration:none;display:block"
+  >
+    <div class="stat-value">{{ stat.count }}</div>
+    <div class="stat-label">{{ stat.name }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="card">
   <h2 class="section-title">Quick Actions</h2>
   <div class="toolbar">
@@ -25,7 +41,7 @@
     <a href="{% url 'scan:start' %}" class="btn btn-success">📱 Scan</a>
     {% endif %}
     <a href="{% url 'assets:list' %}" class="btn btn-secondary">View All Assets</a>
-    <a href="{% url 'assets:report' %}" class="btn btn-secondary" target="_blank">Print Report</a>
+    <a href="{% url 'assets:site_reports' %}" class="btn btn-secondary">Site Reports</a>
   </div>
 </div>
 

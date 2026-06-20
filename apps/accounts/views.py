@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -47,10 +48,23 @@ class AppLogoutView(LogoutView):
 @login_required
 def dashboard(request):
     assets = Asset.objects.filter(is_archived=False)
+    site_stats = []
+    for row in assets.values("site_name").annotate(count=Count("id")).order_by("site_name"):
+        name = (row["site_name"] or "").strip()
+        site_stats.append(
+            {
+                "name": name or "Unassigned",
+                "count": row["count"],
+                "is_unassigned": not name,
+            }
+        )
+    site_stats.sort(key=lambda item: (item["is_unassigned"], item["name"].lower()))
+
     context = {
         "total_assets": assets.count(),
         "recent_assets": assets.order_by("-created_at")[:5],
         "archived_count": Asset.objects.filter(is_archived=True).count(),
+        "site_stats": site_stats,
     }
     return render(request, "accounts/dashboard.html", context)
 

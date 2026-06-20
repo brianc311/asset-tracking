@@ -3,6 +3,12 @@
 {% block content %}
 <h1 class="page-title">{{ branding.assets_page_title }}</h1>
 <p class="page-subtitle">Manage, archive, and print asset inventory</p>
+{% if site_filter %}
+<p class="page-subtitle" style="margin-top:-0.75rem">
+  Site: <strong>{% if site_filter == '__unassigned__' %}Unassigned{% else %}{{ site_filter }}{% endif %}</strong>
+  · <a href="{% url 'assets:list' %}">Show all</a>
+</p>
+{% endif %}
 
 <div class="toolbar no-print">
   {% if user.can_manage_assets %}<a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a>{% endif %}

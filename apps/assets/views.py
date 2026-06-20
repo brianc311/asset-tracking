@@ -26,7 +26,12 @@ def _require_asset_access(view_func):
 def asset_list(request):
     show_archived = request.GET.get("archived") == "1"
     q = request.GET.get("q", "").strip()
+    site_filter = request.GET.get("site", "").strip()
     qs = Asset.objects.filter(is_archived=show_archived)
+    if site_filter == "__unassigned__":
+        qs = qs.filter(Q(site_name="") | Q(site_name__isnull=True))
+    elif site_filter:
+        qs = qs.filter(site_name=site_filter)
     if q:
         filters = (
             Q(product_name__icontains=q)
@@ -42,7 +47,12 @@ def asset_list(request):
     return render(
         request,
         "assets/list.html",
-        {"assets": qs, "show_archived": show_archived, "query": q},
+        {
+            "assets": qs,
+            "show_archived": show_archived,
+            "query": q,
+            "site_filter": site_filter,
+        },
     )
 
 
