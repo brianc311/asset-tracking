@@ -5,7 +5,11 @@
 {% endblock %}
 {% block content %}
 <h1 class="page-title">{{ branding.scan_page_title }}</h1>
-<p class="page-subtitle">Scan barcodes with your phone camera and build a running inventory</p>
+<p class="page-subtitle">Scan a main barcode, or add an item and scan each field separately (serial, model, location, etc.)</p>
+
+<div class="toolbar no-print" style="margin-bottom:1rem">
+  <a href="{% url 'scan:register' %}" class="btn btn-primary">+ Add Item (scan fields independently)</a>
+</div>
 
 <div class="card-grid">
   <div class="card stat-card">
@@ -33,7 +37,7 @@
   <div class="toolbar">
     <button id="start-scan" class="btn btn-primary">Start Camera</button>
     <button id="stop-scan" class="btn btn-secondary" style="display:none">Stop Camera</button>
-    <a href="{% url 'scan:register' %}" class="btn btn-secondary">New Item (no barcode)</a>
+    <a href="{% url 'scan:register' %}" class="btn btn-secondary">Add item manually</a>
   </div>
 </div>
 

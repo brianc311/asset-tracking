@@ -1,24 +1,80 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Register Asset — {{ branding.site_name }}{% endblock %}
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
 {% block content %}
-<h1 class="page-title">{% if existing %}Update{% else %}Register{% endif %} Asset</h1>
-{% if barcode %}<p class="page-subtitle">Scanned: <code>{{ barcode }}</code></p>{% endif %}
+<h1 class="page-title">{% if existing %}Update{% else %}Add{% endif %} Asset</h1>
+<p class="page-subtitle">Fill in each field manually or tap <strong>Scan</strong> next to any field to scan its barcode independently.</p>
+{% if barcode %}<p class="page-subtitle">Main barcode: <code>{{ barcode }}</code></p>{% endif %}
 {% if existing %}<div class="card" style="margin-bottom:1rem;border-left:4px solid var(--warning)">Existing asset found — update fields below.</div>{% endif %}
 
 <div class="card" style="max-width:640px">
-  <form method="post" enctype="multipart/form-data">
+  <form method="post" enctype="multipart/form-data" id="scan-register-form">
     {% csrf_token %}
-    {% for field in form %}
-      {% if field.name == 'photo' %}
-        {% include "assets/photo_picker.html" with field=field asset=existing %}
-      {% else %}
-        <label class="form-label">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:-0.5rem 0 0.75rem">{{ field.help_text }}</p>{% endif %}
-        {% if field.errors %}<p style="color:var(--danger);font-size:0.875rem">{{ field.errors.0 }}</p>{% endif %}
-      {% endif %}
-    {% endfor %}
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.asset_number.id_for_label }}">{{ form.asset_number.label }}</label>
+      {{ form.asset_number }}
+      {% if form.asset_number.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0">{{ form.asset_number.help_text }}</p>{% endif %}
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.product_name.id_for_label }}">{{ form.product_name.label }}</label>
+      <div class="field-row-scan">
+        {{ form.product_name }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.product_name.id_for_label }}" data-scan-label="Product name">📷 Scan</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.serial_number.id_for_label }}">{{ form.serial_number.label }}</label>
+      <div class="field-row-scan">
+        {{ form.serial_number }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.serial_number.id_for_label }}" data-scan-label="Serial number">📷 Scan</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.model_number.id_for_label }}">{{ form.model_number.label }}</label>
+      <div class="field-row-scan">
+        {{ form.model_number }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.model_number.id_for_label }}" data-scan-label="Model number">📷 Scan</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.location.id_for_label }}">{{ form.location.label }}</label>
+      <div class="field-row-scan">
+        {{ form.location }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.location.id_for_label }}" data-scan-label="Location">📷 Scan</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.comments.id_for_label }}">{{ form.comments.label }}</label>
+      {{ form.comments }}
+    </div>
+
+    <div class="field-row">
+      {% include "assets/photo_picker.html" with field=form.photo asset=existing %}
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.barcode_type.id_for_label }}">{{ form.barcode_type.label }}</label>
+      {{ form.barcode_type }}
+    </div>
+
+    <div class="field-row">
+      <label class="form-label" for="{{ form.barcode_value.id_for_label }}">{{ form.barcode_value.label }}</label>
+      <div class="field-row-scan">
+        {{ form.barcode_value }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.barcode_value.id_for_label }}" data-scan-label="Asset barcode">📷 Scan</button>
+      </div>
+      <p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0 0">Leave blank to auto-generate an asset barcode.</p>
+    </div>
+
     <div class="toolbar" style="margin-top:1rem">
       <button type="submit" class="btn btn-primary">Save to Database</button>
       <a href="{% url 'scan:home' %}" class="btn btn-secondary">Back to Scanner</a>
@@ -29,5 +85,6 @@
 
 {% block extra_js %}
 <script src="{% static 'js/photo-picker.js' %}"></script>
+<script src="{% static 'js/field-scanner.js' %}"></script>
 <script>document.addEventListener('DOMContentLoaded', () => initPhotoPicker('.photo-picker'));</script>
 {% endblock %}

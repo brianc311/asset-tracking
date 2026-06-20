@@ -33,7 +33,7 @@ class ScanAssetForm(forms.ModelForm):
             "location": forms.TextInput(attrs={"class": "form-input", "placeholder": "Location"}),
             "comments": forms.Textarea(attrs={"class": "form-input", "rows": 2, "placeholder": "Comments"}),
             "barcode_type": forms.Select(attrs={"class": "form-input"}),
-            "barcode_value": forms.TextInput(attrs={"class": "form-input", "readonly": "readonly"}),
+            "barcode_value": forms.TextInput(attrs={"class": "form-input", "placeholder": "Scan or leave blank to auto-generate"}),
             "photo": forms.FileInput(attrs={"class": "photo-file-input", "accept": "image/*"}),
         }
 

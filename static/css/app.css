@@ -354,3 +354,21 @@ code {
   body { background: #fff !important; color: #000 !important; }
   .card { background: #fff !important; color: #000 !important; border: 1px solid #ccc; }
 }
+
+.field-row {
+  margin-bottom: 0.75rem;
+}
+.field-row-scan {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.field-row-scan .form-input {
+  margin-bottom: 0;
+  flex: 1;
+}
+.btn-scan-field {
+  white-space: nowrap;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}

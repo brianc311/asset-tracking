@@ -17,7 +17,7 @@
   </script>
   <title>{% block title %}{{ branding.site_name }}{% endblock %}</title>
   {% if branding.favicon %}<link rel="icon" href="{{ branding.favicon.url }}">{% endif %}
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=5">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=6">
   {% if branding.custom_css %}<style>{{ branding.custom_css|safe }}</style>{% endif %}
   {% block extra_head %}{% endblock %}
 </head>
