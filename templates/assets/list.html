@@ -39,7 +39,7 @@
       <thead>
         <tr>
           {% if user.can_manage_assets and not show_archived %}<th><input type="checkbox" class="select-all"></th>{% endif %}
-          <th>#</th><th>Product</th><th>Barcode</th><th>Serial</th><th>Model</th><th>Location</th><th>Actions</th>
+          <th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -49,11 +49,11 @@
           <td><input type="checkbox" class="row-select" value="{{ asset.pk }}"></td>
           {% endif %}
           <td><strong>{{ asset.asset_number|default:"—" }}</strong></td>
+          <td><code>{{ asset.barcode_value }}</code></td>
           <td>
             {% if asset.photo %}<img src="{{ asset.photo.url }}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:0.5rem">{% endif %}
             <a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a>
           </td>
-          <td><code>{{ asset.barcode_value }}</code></td>
           <td>{{ asset.serial_number|default:"—" }}</td>
           <td>{{ asset.model_number|default:"—" }}</td>
           <td>{{ asset.location|default:"—" }}</td>
