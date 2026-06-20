@@ -38,6 +38,13 @@
       <label class="form-label">Password</label>
       {{ form.password }}
       <div style="margin:1rem 0">{{ form.captcha }}</div>
+      {% if debug %}
+      <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 1rem">
+        Server site key: <code>{{ recaptcha_key_prefix }}…</code>
+        {% if recaptcha_is_test_key %}(test key){% else %}(your key){% endif %}
+        — If the box still says “testing purposes only”, press <strong>Ctrl+Shift+R</strong> or use Incognito.
+      </p>
+      {% endif %}
       <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Sign In</button>
     </form>
 
