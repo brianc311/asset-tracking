@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Manage Status — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Status Management</h1>
+<p class="page-subtitle">Post outages and update component health for the public status page</p>
+
+<div class="card-grid">
+  <div class="card">
+    <h2 style="margin-top:0">Post Incident</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="incident">
+      {% for field in incident_form %}
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% endfor %}
+      <button type="submit" class="btn btn-primary">Create Incident</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Add Component</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="component">
+      {% for field in component_form %}
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% endfor %}
+      <button type="submit" class="btn btn-primary">Add Component</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-top:0">Recent Incidents</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Title</th><th>Severity</th><th>Status</th><th>Started</th><th>Public</th></tr></thead>
+      <tbody>
+        {% for inc in incidents %}
+        <tr>
+          <td>{{ inc.title }}</td>
+          <td>{{ inc.get_severity_display }}</td>
+          <td>{{ inc.get_status_display }}</td>
+          <td>{{ inc.started_at|date:"M j, Y" }}</td>
+          <td>{% if inc.is_public %}Yes{% else %}No{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No incidents yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

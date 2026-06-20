@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ branding.status_page_title }} — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<div class="status-overall status-{{ overall_status }}">
+  <h1 style="margin:0;font-size:2rem">
+    {% if overall_status == 'operational' %}All Systems Operational
+    {% elif overall_status == 'degraded' %}Partial System Issues
+    {% else %}Major Outage{% endif %}
+  </h1>
+  <p style="opacity:0.9;margin:0.5rem 0 0">Last checked {{ checked_at|date:"M j, Y g:i A T" }}</p>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <h3 style="margin-top:0">Web Application</h3>
+    <span class="badge {% if app_ok %}badge-success{% else %}badge-danger{% endif %}">{% if app_ok %}Operational{% else %}Down{% endif %}</span>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Database</h3>
+    <span class="badge {% if db_ok %}badge-success{% else %}badge-danger{% endif %}">{% if db_ok %}Connected{% else %}Unavailable{% endif %}</span>
+    {% if not db_ok %}<p style="font-size:0.8rem;color:var(--text-muted)">{{ db_msg }}</p>{% endif %}
+  </div>
+</div>
+
+{% if components %}
+<div class="card" style="margin-bottom:1rem">
+  <h2 style="margin-top:0">Components</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Component</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for c in components %}
+        <tr>
+          <td>{{ c.name }}{% if c.description %}<br><small style="color:var(--text-muted)">{{ c.description }}</small>{% endif %}</td>
+          <td><span class="badge {% if c.status == 'operational' %}badge-success{% elif c.status == 'maintenance' %}badge-warning{% else %}badge-danger{% endif %}">{{ c.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if active_incidents %}
+<div class="card" style="margin-bottom:1rem;border-left:4px solid var(--danger)">
+  <h2 style="margin-top:0;color:var(--danger)">Active Incidents</h2>
+  {% for inc in active_incidents %}
+  <div style="padding:1rem 0;border-bottom:1px solid var(--border)">
+    <h3 style="margin:0 0 0.5rem">{{ inc.title }} <span class="badge badge-warning">{{ inc.get_status_display }}</span></h3>
+    <p>{{ inc.description }}</p>
+    {% if inc.cause %}<p><strong>Cause:</strong> {{ inc.cause }}</p>{% endif %}
+    <p style="font-size:0.875rem;color:var(--text-muted)">Started {{ inc.started_at|date:"M j, Y g:i A" }} · Severity: {{ inc.get_severity_display }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if recent_incidents %}
+<div class="card">
+  <h2 style="margin-top:0">Incident History</h2>
+  {% for inc in recent_incidents %}
+  <div style="padding:0.75rem 0;border-bottom:1px solid var(--border)">
+    <strong>{{ inc.title }}</strong>
+    <span class="badge {% if inc.status == 'resolved' %}badge-success{% else %}badge-warning{% endif %}">{{ inc.get_status_display }}</span>
+    <p style="font-size:0.875rem;color:var(--text-muted);margin:0.25rem 0">{{ inc.started_at|date:"M j, Y" }}{% if inc.resolved_at %} — Resolved {{ inc.resolved_at|date:"M j, Y" }}{% endif %}</p>
+    {% if inc.resolution %}<p style="font-size:0.875rem">{{ inc.resolution }}</p>{% endif %}
+  </div>
+  {% empty %}
+  <p style="color:var(--text-muted)">No incidents recorded.</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if user.is_authenticated and user.can_manage_status %}
+<p class="no-print" style="margin-top:1rem"><a href="{% url 'statuspage:manage' %}" class="btn btn-secondary">Manage Incidents</a></p>
+{% endif %}
+{% endblock %}

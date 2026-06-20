@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Branding Console — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">White-Label Branding</h1>
+<p class="page-subtitle">Customize logo, colors, headers, footers, and page titles across the entire site</p>
+
+<div class="card" style="max-width:800px">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <h3>Identity</h3>
+    {% for field in form %}
+      {% if field.name in 'site_name,tagline,logo,favicon' %}
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% if field.name == 'logo' and branding.logo %}<p style="font-size:0.875rem"><img src="{{ branding.logo.url }}" style="max-height:48px"></p>{% endif %}
+      {% endif %}
+    {% endfor %}
+
+    <h3>Colors</h3>
+    {% for field in form %}{% if 'color' in field.name or field.name.endswith '_bg' %}
+    <label class="form-label">{{ field.label }}</label>{{ field }}
+    {% endif %}{% endfor %}
+
+    <h3>Page Titles</h3>
+    {% for field in form %}{% if field.name.endswith '_title' or field.name == 'login_subtitle' %}
+    <label class="form-label">{{ field.label }}</label>{{ field }}
+    {% endif %}{% endfor %}
+
+    <h3>Custom HTML</h3>
+    <label class="form-label">Header HTML</label>{{ form.header_html }}
+    <label class="form-label">Footer HTML</label>{{ form.footer_html }}
+    <label class="form-label">Custom CSS</label>{{ form.custom_css }}
+
+    <div class="toolbar" style="margin-top:1.5rem">
+      <button type="submit" class="btn btn-primary">Save Branding</button>
+      <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

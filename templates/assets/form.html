@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Asset — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ action }} Asset</h1>
+
+<div class="card" style="max-width:640px">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+    <label class="form-label">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}<p style="color:var(--danger);font-size:0.875rem">{{ field.errors.0 }}</p>{% endif %}
+    {% endfor %}
+    <div class="toolbar" style="margin-top:1rem">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{% url 'assets:list' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

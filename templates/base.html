@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-user-theme="{{ user_theme|default:'system' }}"
+      style="--primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; --header-bg: {{ branding.header_bg }}; --footer-bg: {{ branding.footer_bg }};">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ branding.site_name }}{% endblock %}</title>
+  {% if branding.favicon %}<link rel="icon" href="{{ branding.favicon.url }}">{% endif %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% if branding.custom_css %}<style>{{ branding.custom_css|safe }}</style>{% endif %}
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<header class="site-header no-print">
+  <a href="{% url 'accounts:dashboard' %}" class="brand">
+    {% if branding.logo %}<img src="{{ branding.logo.url }}" alt="{{ branding.site_name }}">{% endif %}
+    <span>{{ branding.site_name }}</span>
+  </a>
+  {% if user.is_authenticated %}
+  <nav class="nav-links">
+    <a href="{% url 'accounts:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+    <a href="{% url 'assets:list' %}">Assets</a>
+    {% if user.can_manage_assets %}<a href="{% url 'scan:home' %}">Scan</a>{% endif %}
+    <a href="{% url 'statuspage:public' %}" target="_blank">Status</a>
+    {% if user.can_manage_status %}<a href="{% url 'statuspage:manage' %}">Incidents</a>{% endif %}
+    {% if user.can_manage_branding %}<a href="{% url 'branding:console' %}">Branding</a>{% endif %}
+    <button type="button" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+    <a href="{% url 'accounts:logout' %}">Logout</a>
+  </nav>
+  {% endif %}
+</header>
+
+{% if branding.header_html %}
+<div class="custom-header no-print">{{ branding.header_html|safe }}</div>
+{% endif %}
+
+<main class="main-content">
+  {% if messages %}
+  <div class="messages no-print">
+    {% for message in messages %}
+    <div class="card" style="margin-bottom:0.75rem;border-left:4px solid var(--primary)">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+{% if branding.footer_html %}
+<div class="custom-footer no-print">{{ branding.footer_html|safe }}</div>
+{% endif %}
+
+<footer class="site-footer no-print">
+  <p>{{ branding.site_name }} — {{ branding.tagline }}</p>
+  <p style="opacity:0.6;margin-top:0.5rem">&copy; {% now "Y" %} All rights reserved.</p>
+</footer>
+{% endblock %}
+
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

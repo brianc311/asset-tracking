@@ -1,0 +1,43 @@
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LoginView, LogoutView
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
+
+from apps.accounts.forms import RecaptchaAuthenticationForm
+from apps.assets.models import Asset
+
+
+class AppLoginView(LoginView):
+    template_name = "accounts/login.html"
+    form_class = RecaptchaAuthenticationForm
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        return reverse_lazy("dashboard")
+
+
+class AppLogoutView(LogoutView):
+    next_page = reverse_lazy("accounts:login")
+
+
+@login_required
+def dashboard(request):
+    assets = Asset.objects.filter(is_archived=False)
+    context = {
+        "total_assets": assets.count(),
+        "recent_assets": assets.order_by("-created_at")[:5],
+        "archived_count": Asset.objects.filter(is_archived=True).count(),
+    }
+    return render(request, "accounts/dashboard.html", context)
+
+
+@login_required
+@require_POST
+def set_theme(request):
+    theme = request.POST.get("theme", "system")
+    if theme in ("light", "dark", "system"):
+        request.user.theme_preference = theme
+        request.user.save(update_fields=["theme_preference"])
+    return JsonResponse({"ok": True, "theme": theme})

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ asset.product_name }} — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<div class="toolbar no-print">
+  <a href="{% url 'assets:list' %}" class="btn btn-secondary">← Back</a>
+  {% if user.can_manage_assets %}<a href="{% url 'assets:edit' asset.pk %}" class="btn btn-primary">Edit</a>{% endif %}
+  <a href="{% url 'assets:barcode' asset.pk %}" class="btn btn-secondary" target="_blank">View Barcode</a>
+  <button type="button" class="btn btn-secondary" onclick="navigator.clipboard.writeText('{{ scan_url }}'); AppModal.alert('Copied', 'Scan URL copied to clipboard.')">Copy Scan URL</button>
+</div>
+
+<div class="card-grid">
+  <div class="card">
+    <h2 style="margin-top:0">{{ asset.product_name }}</h2>
+    <p><strong>Barcode:</strong> <code>{{ asset.barcode_value }}</code> ({{ asset.get_barcode_type_display }})</p>
+    <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
+    <p><strong>Model:</strong> {{ asset.model_number|default:"—" }}</p>
+    <p><strong>Location:</strong> {{ asset.location|default:"—" }}</p>
+    <p><strong>Comments:</strong> {{ asset.comments|default:"—"|linebreaksbr }}</p>
+    <p><strong>Status:</strong> {% if asset.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</p>
+    <p style="font-size:0.875rem;color:var(--text-muted)">Added {{ asset.created_at|date:"M j, Y g:i A" }}{% if asset.created_by %} by {{ asset.created_by.username }}{% endif %}</p>
+  </div>
+  <div class="card" style="text-align:center">
+    <img src="{% url 'assets:barcode' asset.pk %}" alt="Barcode" style="max-width:100%;border-radius:8px">
+    <p style="margin-top:0.75rem;font-size:0.875rem"><a href="{{ scan_url }}">Open scan registration page</a></p>
+    {% if asset.photo %}
+    <hr style="border-color:var(--border);margin:1rem 0">
+    <img src="{{ asset.photo.url }}" alt="Asset photo" style="max-width:100%;border-radius:8px">
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

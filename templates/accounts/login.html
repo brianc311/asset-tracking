@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-user-theme="system"
+      style="--primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; --header-bg: {{ branding.header_bg }};">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — {{ branding.site_name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {{ form.media }}
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      {% if branding.logo %}<img src="{{ branding.logo.url }}" alt="{{ branding.site_name }}">{% endif %}
+      <h1 style="margin:0.5rem 0 0;font-size:1.5rem">{{ branding.login_title }}</h1>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0">{{ branding.login_subtitle }}</p>
+    </div>
+
+    {% if form.errors %}
+    <div class="card" style="border-left:4px solid var(--danger);margin-bottom:1rem;padding:0.75rem">
+      Invalid credentials or reCAPTCHA failed. Please try again.
+    </div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <label class="form-label">Username</label>
+      {{ form.username }}
+      <label class="form-label">Password</label>
+      {{ form.password }}
+      <div style="margin:1rem 0">{{ form.captcha }}</div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Sign In</button>
+    </form>
+
+    <p style="text-align:center;margin-top:1.25rem;font-size:0.875rem">
+      <a href="{% url 'statuspage:public' %}">System Status</a>
+    </p>
+  </div>
+</div>
+<script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

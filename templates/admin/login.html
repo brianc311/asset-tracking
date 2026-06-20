@@ -1,0 +1,47 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans 'Log in' %} — Asset Tracking Admin</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% if form.media %}{{ form.media }}{% endif %}
+  <style>
+    body { margin: 0; }
+    .admin-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a, #312e81); padding: 1rem; }
+    .admin-login-card { background: #fff; border-radius: 16px; padding: 2rem; width: 100%; max-width: 420px; box-shadow: 0 24px 64px rgba(0,0,0,0.3); }
+    .admin-login-card h1 { margin: 0 0 0.25rem; font-size: 1.35rem; color: #0f172a; }
+    .admin-login-card p { color: #64748b; margin: 0 0 1.5rem; font-size: 0.9rem; }
+    .errornote { background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+<div class="admin-login-wrap">
+  <div class="admin-login-card">
+    <h1>{% trans 'Administration' %}</h1>
+    <p>Asset Tracking — protected with reCAPTCHA</p>
+
+    {% if form.errors and not form.non_field_errors %}
+    <p class="errornote">Please correct the errors below.</p>
+    {% endif %}
+    {% if form.non_field_errors %}
+    {% for error in form.non_field_errors %}<p class="errornote">{{ error }}</p>{% endfor %}
+    {% endif %}
+
+    <form action="{{ app_path }}" method="post" id="login-form">
+      {% csrf_token %}
+      <label class="form-label">{% trans 'Username:' %}</label>
+      {{ form.username }}
+      <label class="form-label">{% trans 'Password:' %}</label>
+      {{ form.password }}
+      <div style="margin:1rem 0">
+        {% if form.captcha %}{{ form.captcha }}{% endif %}
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">{% trans 'Log in' %}</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

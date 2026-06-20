@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ branding.assets_page_title }} — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ branding.assets_page_title }}</h1>
+<p class="page-subtitle">Manage, archive, and print asset inventory</p>
+
+<div class="toolbar no-print">
+  {% if user.can_manage_assets %}<a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a>{% endif %}
+  <a href="{% url 'assets:list' %}{% if show_archived %}?{% else %}?archived=1{% endif %}" class="btn btn-secondary">
+    {% if show_archived %}Show Active{% else %}Show Archived{% endif %}
+  </a>
+  <a href="{% url 'assets:report' %}" class="btn btn-secondary" target="_blank">Print All</a>
+  <form method="get" style="margin-left:auto;display:flex;gap:0.5rem">
+    <input type="hidden" name="archived" value="{% if show_archived %}1{% else %}0{% endif %}">
+    <input type="text" name="q" value="{{ query }}" class="form-input" style="margin:0;width:200px" placeholder="Search...">
+    <button type="submit" class="btn btn-secondary">Search</button>
+  </form>
+</div>
+
+<form id="bulk-form" method="post" action="{% url 'assets:bulk' %}">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="">
+  <input type="hidden" name="asset_ids" value="">
+</form>
+
+{% if user.can_manage_assets and not show_archived %}
+<div class="toolbar no-print">
+  <button type="button" class="btn btn-secondary" data-bulk-action="archive" form="bulk-form">Archive Selected</button>
+  {% if user.is_admin_role %}
+  <button type="button" class="btn btn-danger" data-bulk-action="delete" form="bulk-form">Delete Selected</button>
+  {% endif %}
+  <a href="#" class="btn btn-secondary" id="print-selected" style="margin-left:auto">Print Selected</a>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table" id="assets-table">
+      <thead>
+        <tr>
+          {% if user.can_manage_assets and not show_archived %}<th><input type="checkbox" class="select-all"></th>{% endif %}
+          <th>Product</th><th>Barcode</th><th>Serial</th><th>Model</th><th>Location</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+        <tr>
+          {% if user.can_manage_assets and not show_archived %}
+          <td><input type="checkbox" class="row-select" value="{{ asset.pk }}"></td>
+          {% endif %}
+          <td>
+            {% if asset.photo %}<img src="{{ asset.photo.url }}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:0.5rem">{% endif %}
+            <a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a>
+          </td>
+          <td><code>{{ asset.barcode_value }}</code></td>
+          <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.model_number|default:"—" }}</td>
+          <td>{{ asset.location|default:"—" }}</td>
+          <td class="no-print">
+            <a href="{% url 'assets:barcode' asset.pk %}" target="_blank">Barcode</a> ·
+            <a href="{% url 'scan:register' asset.barcode_value %}">Scan URL</a>
+            {% if user.can_manage_assets %} · <a href="{% url 'assets:edit' asset.pk %}">Edit</a>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No assets found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initBulkSelect('assets-table', 'bulk-form');
+  document.getElementById('print-selected')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const ids = [...document.querySelectorAll('.row-select:checked')].map(c => c.value);
+    if (!ids.length) { await AppModal.alert('No selection', 'Select items to print.'); return; }
+    window.open('{% url "assets:report" %}?ids=' + ids.join(','), '_blank');
+  });
+});
+</script>
+{% endblock %}

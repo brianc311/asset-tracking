@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #0f172a; }
+    h1 { color: #6366f1; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
+    th, td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
+    th { background: #6366f1; color: #fff; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .total { margin-top: 1rem; font-weight: bold; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:1rem">
+    <button onclick="window.print()">Print</button>
+    <a href="?export=pdf{% if request.GET.ids %}&ids={{ request.GET.ids }}{% endif %}{% if request.GET.session %}&session={{ request.GET.session }}{% endif %}">Download PDF</a>
+  </div>
+  <h1>{{ title }}</h1>
+  <p>Generated {% now "M j, Y g:i A" %}</p>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Product</th><th>Serial</th><th>Model</th><th>Barcode</th><th>Location</th><th>Comments</th></tr>
+    </thead>
+    <tbody>
+      {% for asset in assets %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ asset.product_name }}</td>
+        <td>{{ asset.serial_number|default:"—" }}</td>
+        <td>{{ asset.model_number|default:"—" }}</td>
+        <td>{{ asset.barcode_value }}</td>
+        <td>{{ asset.location|default:"—" }}</td>
+        <td>{{ asset.comments|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="total">Total items: {{ total }}</p>
+</body>
+</html>

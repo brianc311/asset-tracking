@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ branding.scan_page_title }} — {{ branding.site_name }}{% endblock %}
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ branding.scan_page_title }}</h1>
+<p class="page-subtitle">Scan barcodes with your phone camera and build a running inventory</p>
+
+<div class="card-grid">
+  <div class="card stat-card">
+    <div class="scan-total" style="-webkit-text-fill-color:#fff">{{ session_total }}</div>
+    <div class="stat-label" style="text-align:center">Items this session</div>
+  </div>
+</div>
+
+<div class="card no-print">
+  <h2 style="margin-top:0">Camera Scanner</h2>
+  <div id="reader" style="width:100%"></div>
+  <div class="toolbar">
+    <button id="start-scan" class="btn btn-primary">Start Camera</button>
+    <button id="stop-scan" class="btn btn-secondary" style="display:none">Stop Camera</button>
+    <a href="{% url 'scan:register' %}" class="btn btn-secondary">Manual Entry</a>
+  </div>
+</div>
+
+<div class="toolbar no-print">
+  <a href="{% url 'assets:report' %}?session={{ session_key }}" class="btn btn-primary" target="_blank">Print Session</a>
+  <a href="{% url 'assets:report' %}?session={{ session_key }}&export=pdf" class="btn btn-secondary">Export PDF</a>
+  <form method="post" action="{% url 'scan:clear' %}" style="display:inline" id="clear-form">
+    {% csrf_token %}
+    <button type="button" class="btn btn-danger" id="clear-btn">Clear Session</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Session Items</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Product</th><th>Barcode</th><th>Serial</th><th>Model</th></tr></thead>
+      <tbody>
+        {% for asset in session_assets %}
+        <tr>
+          <td><a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a></td>
+          <td><code>{{ asset.barcode_value }}</code></td>
+          <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.model_number|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Scan a barcode to get started.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let html5QrCode = null;
+
+document.getElementById('start-scan')?.addEventListener('click', async () => {
+  html5QrCode = new Html5Qrcode("reader");
+  document.getElementById('start-scan').style.display = 'none';
+  document.getElementById('stop-scan').style.display = 'inline-flex';
+  try {
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        html5QrCode.stop().then(() => {
+          document.getElementById('start-scan').style.display = 'inline-flex';
+          document.getElementById('stop-scan').style.display = 'none';
+          window.location.href = '/scan/register/' + encodeURIComponent(decodedText) + '/';
+        });
+      }
+    );
+  } catch (err) {
+    await AppModal.alert('Camera Error', err.message || 'Could not access camera.');
+    document.getElementById('start-scan').style.display = 'inline-flex';
+    document.getElementById('stop-scan').style.display = 'none';
+  }
+});
+
+document.getElementById('stop-scan')?.addEventListener('click', () => {
+  html5QrCode?.stop().then(() => {
+    document.getElementById('start-scan').style.display = 'inline-flex';
+    document.getElementById('stop-scan').style.display = 'none';
+  });
+});
+
+document.getElementById('clear-btn')?.addEventListener('click', async () => {
+  const ok = await AppModal.confirm('Clear session', 'Remove all items from this scan session?');
+  if (ok) document.getElementById('clear-form').submit();
+});
+</script>
+{% endblock %}

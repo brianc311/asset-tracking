@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{{ branding.dashboard_title }} — {{ branding.site_name }}{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ branding.dashboard_title }}</h1>
+<p class="page-subtitle">{{ branding.tagline }}</p>
+
+<div class="card-grid">
+  <div class="card stat-card">
+    <div class="stat-value">{{ total_assets }}</div>
+    <div class="stat-label">Active Assets</div>
+  </div>
+  <div class="card stat-card" style="background:linear-gradient(135deg,#64748b,#475569)">
+    <div class="stat-value">{{ archived_count }}</div>
+    <div class="stat-label">Archived</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">Quick Actions</h2>
+  <div class="toolbar">
+    {% if user.can_manage_assets %}
+    <a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a>
+    <a href="{% url 'scan:home' %}" class="btn btn-success">📱 Scan</a>
+    {% endif %}
+    <a href="{% url 'assets:list' %}" class="btn btn-secondary">View All Assets</a>
+    <a href="{% url 'assets:report' %}" class="btn btn-secondary" target="_blank">Print Report</a>
+  </div>
+</div>
+
+{% if recent_assets %}
+<div class="card" style="margin-top:1rem">
+  <h2 style="margin-top:0">Recently Added</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Product</th><th>Barcode</th><th>Serial</th><th>Added</th></tr></thead>
+      <tbody>
+        {% for asset in recent_assets %}
+        <tr>
+          <td><a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a></td>
+          <td><code>{{ asset.barcode_value }}</code></td>
+          <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
