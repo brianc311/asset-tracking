@@ -9,6 +9,8 @@ for /f "tokens=*" %%i in ('powershell -NoProfile -Command "(Get-NetIPAddress -Ad
 echo.
 echo Asset Tracking HTTPS dev server (camera works on phone)
 echo.
+echo   Laptop:      https://127.0.0.1:8443/
+echo   Laptop:      https://localhost:8443/
 if defined LAPTOP_IP (
   echo   Phone scan:  https://%LAPTOP_IP%:8443/scan/
   echo   Phone login: https://%LAPTOP_IP%:8443/login/
