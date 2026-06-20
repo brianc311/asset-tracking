@@ -7,6 +7,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
 from apps.assets.models import Asset
+from apps.assets.site_names import get_known_site_names
 from apps.scan.forms import ScanAssetForm, StartScanForm
 
 META_KEY = "scan_sessions_meta"
@@ -115,17 +116,34 @@ def scan_register(request, barcode=None):
     if barcode:
         existing = Asset.objects.filter(barcode_value=barcode).first()
 
+    known_sites = get_known_site_names(request)
+    if site_name and site_name not in known_sites:
+        known_sites = [site_name, *known_sites]
+
     if request.method == "POST":
         if existing:
-            form = ScanAssetForm(request.POST, request.FILES, instance=existing)
+            form = ScanAssetForm(
+                request.POST,
+                request.FILES,
+                instance=existing,
+                known_site_names=known_sites,
+                default_site_name=site_name,
+            )
         else:
-            form = ScanAssetForm(request.POST, request.FILES)
+            form = ScanAssetForm(
+                request.POST,
+                request.FILES,
+                known_site_names=known_sites,
+                default_site_name=site_name,
+            )
         if form.is_valid():
             asset = form.save(commit=False)
             if not existing:
                 asset.created_by = request.user
                 if not asset.barcode_value:
                     asset.barcode_value = barcode or Asset.generate_barcode_value()
+            if not asset.site_name:
+                asset.site_name = site_name
             asset.updated_by = request.user
             asset.save()
 
@@ -139,8 +157,13 @@ def scan_register(request, barcode=None):
     else:
         initial = {"barcode_value": barcode} if barcode else {}
         if not existing and site_name:
-            initial.setdefault("location", site_name)
-        form = ScanAssetForm(instance=existing, initial=initial if not existing else None)
+            initial.setdefault("site_name", site_name)
+        form = ScanAssetForm(
+            instance=existing,
+            initial=initial if not existing else None,
+            known_site_names=known_sites,
+            default_site_name=site_name,
+        )
 
     return render(
         request,
@@ -150,6 +173,7 @@ def scan_register(request, barcode=None):
             "barcode": barcode,
             "existing": existing,
             "site_name": site_name,
+            "known_site_names": known_sites,
         },
     )
 

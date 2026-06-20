@@ -14,6 +14,7 @@
     <p><strong>Barcode:</strong> <code>{{ asset.barcode_value }}</code> ({{ asset.get_barcode_type_display }})</p>
     <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
     <p><strong>Model:</strong> {{ asset.model_number|default:"—" }}</p>
+    <p><strong>Site:</strong> {{ asset.site_name|default:"—" }}</p>
     <p><strong>Location:</strong> {{ asset.location|default:"—" }}</p>
     <p><strong>Comments:</strong> {{ asset.comments|default:"—"|linebreaksbr }}</p>
     <p><strong>Status:</strong> {% if asset.is_archived %}<span class="badge badge-warning">Archived</span>{% else %}<span class="badge badge-success">Active</span>{% endif %}</p>

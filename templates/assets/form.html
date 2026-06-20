@@ -7,6 +7,7 @@
 <div class="card" style="max-width:640px">
   <form method="post" enctype="multipart/form-data" id="asset-form">
     {% csrf_token %}
+    {% include "assets/site_name_datalist.html" %}
     {% for field in form %}
       {% if field.name == 'photo' %}
         {% include "assets/photo_picker.html" with field=field asset=asset %}

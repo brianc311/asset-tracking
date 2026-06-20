@@ -70,18 +70,19 @@
   <h2 style="margin-top:0">Session Items — {{ site_name }}</h2>
   <div class="table-wrap">
     <table class="data-table">
-      <thead><tr><th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Model</th></tr></thead>
+      <thead><tr><th>#</th><th>Barcode</th><th>Product</th><th>Site</th><th>Serial</th><th>Model</th></tr></thead>
       <tbody>
         {% for asset in session_assets %}
         <tr>
           <td>{{ asset.asset_number|default:"—" }}</td>
           <td><code>{{ asset.barcode_value }}</code></td>
           <td><a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a></td>
+          <td>{{ asset.site_name|default:"—" }}</td>
           <td>{{ asset.serial_number|default:"—" }}</td>
           <td>{{ asset.model_number|default:"—" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Scan a barcode to get started.</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Scan a barcode to get started.</td></tr>
         {% endfor %}
       </tbody>
     </table>

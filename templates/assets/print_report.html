@@ -23,7 +23,7 @@
   <p>Generated {% now "M j, Y g:i A" %}</p>
   <table>
     <thead>
-      <tr><th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Comments</th></tr>
+      <tr><th>#</th><th>Barcode</th><th>Product</th><th>Site</th><th>Serial</th><th>Model</th><th>Location</th><th>Comments</th></tr>
     </thead>
     <tbody>
       {% for asset in assets %}
@@ -31,6 +31,7 @@
         <td>{{ asset.asset_number|default:"—" }}</td>
         <td>{{ asset.barcode_value }}</td>
         <td>{{ asset.product_name }}</td>
+        <td>{{ asset.site_name|default:"—" }}</td>
         <td>{{ asset.serial_number|default:"—" }}</td>
         <td>{{ asset.model_number|default:"—" }}</td>
         <td>{{ asset.location|default:"—" }}</td>

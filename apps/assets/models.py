@@ -27,6 +27,12 @@ class Asset(models.Model):
     product_name = models.CharField(max_length=255)
     serial_number = models.CharField(max_length=128, blank=True)
     model_number = models.CharField(max_length=128, blank=True)
+    site_name = models.CharField(
+        max_length=120,
+        blank=True,
+        db_index=True,
+        help_text="Site or location group this asset belongs to.",
+    )
     location = models.CharField(max_length=255, blank=True)
     comments = models.TextField(blank=True)
     photo = models.ImageField(upload_to="assets/photos/", blank=True, null=True)

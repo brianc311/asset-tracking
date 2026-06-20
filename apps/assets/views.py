@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from apps.assets.barcode_utils import assets_pdf_response, barcode_image_response
 from apps.assets.forms import AssetForm, BulkActionForm
 from apps.assets.models import Asset
+from apps.assets.site_names import get_known_site_names
 
 
 def _require_asset_access(view_func):
@@ -30,6 +31,8 @@ def asset_list(request):
             | Q(barcode_value__icontains=q)
             | Q(serial_number__icontains=q)
             | Q(model_number__icontains=q)
+            | Q(site_name__icontains=q)
+            | Q(location__icontains=q)
         )
         if q.isdigit():
             filters |= Q(asset_number=int(q))
@@ -41,10 +44,25 @@ def asset_list(request):
     )
 
 
+def _active_scan_site_name(request):
+    session_key = request.session.get("scan_session_key")
+    if not session_key:
+        return ""
+    meta = request.session.get("scan_sessions_meta", {}).get(session_key, {})
+    return (meta.get("site_name") or "").strip()
+
+
 @_require_asset_access
 def asset_create(request):
+    known_sites = get_known_site_names(request)
+    default_site = _active_scan_site_name(request)
     if request.method == "POST":
-        form = AssetForm(request.POST, request.FILES)
+        form = AssetForm(
+            request.POST,
+            request.FILES,
+            known_site_names=known_sites,
+            default_site_name=default_site,
+        )
         if form.is_valid():
             asset = form.save(commit=False)
             asset.created_by = request.user
@@ -52,8 +70,12 @@ def asset_create(request):
             asset.save()
             return redirect("assets:detail", pk=asset.pk)
     else:
-        form = AssetForm()
-    return render(request, "assets/form.html", {"form": form, "action": "Create"})
+        form = AssetForm(known_site_names=known_sites, default_site_name=default_site)
+    return render(
+        request,
+        "assets/form.html",
+        {"form": form, "action": "Create", "known_site_names": known_sites},
+    )
 
 
 @login_required
@@ -66,16 +88,21 @@ def asset_detail(request, pk):
 @_require_asset_access
 def asset_edit(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    known_sites = get_known_site_names(request)
     if request.method == "POST":
-        form = AssetForm(request.POST, request.FILES, instance=asset)
+        form = AssetForm(request.POST, request.FILES, instance=asset, known_site_names=known_sites)
         if form.is_valid():
             obj = form.save(commit=False)
             obj.updated_by = request.user
             obj.save()
             return redirect("assets:detail", pk=obj.pk)
     else:
-        form = AssetForm(instance=asset)
-    return render(request, "assets/form.html", {"form": form, "action": "Edit", "asset": asset})
+        form = AssetForm(instance=asset, known_site_names=known_sites)
+    return render(
+        request,
+        "assets/form.html",
+        {"form": form, "action": "Edit", "asset": asset, "known_site_names": known_sites},
+    )
 
 
 @login_required
