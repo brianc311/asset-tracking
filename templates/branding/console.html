@@ -7,29 +7,32 @@
 <div class="card" style="max-width:800px">
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+
     <h3>Identity</h3>
-    {% for field in form %}
-      {% if field.name in 'site_name,tagline,logo,favicon' %}
-      <label class="form-label">{{ field.label }}</label>
-      {{ field }}
-      {% if field.name == 'logo' and branding.logo %}<p style="font-size:0.875rem"><img src="{{ branding.logo.url }}" style="max-height:48px"></p>{% endif %}
-      {% endif %}
-    {% endfor %}
+    <label class="form-label">{{ form.site_name.label }}</label>{{ form.site_name }}
+    <label class="form-label">{{ form.tagline.label }}</label>{{ form.tagline }}
+    <label class="form-label">{{ form.logo.label }}</label>{{ form.logo }}
+    {% if branding.logo %}<p style="font-size:0.875rem"><img src="{{ branding.logo.url }}" style="max-height:48px" alt="Current logo"></p>{% endif %}
+    <label class="form-label">{{ form.favicon.label }}</label>{{ form.favicon }}
 
     <h3>Colors</h3>
-    {% for field in form %}{% if 'color' in field.name or field.name.endswith '_bg' %}
-    <label class="form-label">{{ field.label }}</label>{{ field }}
-    {% endif %}{% endfor %}
+    <label class="form-label">{{ form.primary_color.label }}</label>{{ form.primary_color }}
+    <label class="form-label">{{ form.accent_color.label }}</label>{{ form.accent_color }}
+    <label class="form-label">{{ form.header_bg.label }}</label>{{ form.header_bg }}
+    <label class="form-label">{{ form.footer_bg.label }}</label>{{ form.footer_bg }}
 
     <h3>Page Titles</h3>
-    {% for field in form %}{% if field.name.endswith '_title' or field.name == 'login_subtitle' %}
-    <label class="form-label">{{ field.label }}</label>{{ field }}
-    {% endif %}{% endfor %}
+    <label class="form-label">{{ form.login_title.label }}</label>{{ form.login_title }}
+    <label class="form-label">{{ form.login_subtitle.label }}</label>{{ form.login_subtitle }}
+    <label class="form-label">{{ form.dashboard_title.label }}</label>{{ form.dashboard_title }}
+    <label class="form-label">{{ form.assets_page_title.label }}</label>{{ form.assets_page_title }}
+    <label class="form-label">{{ form.scan_page_title.label }}</label>{{ form.scan_page_title }}
+    <label class="form-label">{{ form.status_page_title.label }}</label>{{ form.status_page_title }}
 
     <h3>Custom HTML</h3>
-    <label class="form-label">Header HTML</label>{{ form.header_html }}
-    <label class="form-label">Footer HTML</label>{{ form.footer_html }}
-    <label class="form-label">Custom CSS</label>{{ form.custom_css }}
+    <label class="form-label">{{ form.header_html.label }}</label>{{ form.header_html }}
+    <label class="form-label">{{ form.footer_html.label }}</label>{{ form.footer_html }}
+    <label class="form-label">{{ form.custom_css.label }}</label>{{ form.custom_css }}
 
     <div class="toolbar" style="margin-top:1.5rem">
       <button type="submit" class="btn btn-primary">Save Branding</button>
