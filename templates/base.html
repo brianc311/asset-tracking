@@ -5,6 +5,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (function () {
+      var pref = document.documentElement.getAttribute('data-user-theme') || 'system';
+      var theme = pref === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <title>{% block title %}{{ branding.site_name }}{% endblock %}</title>
   {% if branding.favicon %}<link rel="icon" href="{{ branding.favicon.url }}">{% endif %}
   <link rel="stylesheet" href="{% static 'css/app.css' %}">

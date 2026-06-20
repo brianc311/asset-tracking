@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "django_recaptcha",
+    "django_extensions",
     "apps.accounts",
     "apps.branding",
     "apps.assets",
@@ -118,6 +119,10 @@ RECAPTCHA_REQUIRED_SCORE = None  # v2 checkbox mode
 
 if DEBUG:
     SILENCED_SYSTEM_CHECKS = ["django_recaptcha.recaptcha_test_key_error"]
+
+csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins.split(",") if o.strip()]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

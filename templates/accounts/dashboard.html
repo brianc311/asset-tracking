@@ -18,7 +18,7 @@
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0">Quick Actions</h2>
+  <h2 class="section-title">Quick Actions</h2>
   <div class="toolbar">
     {% if user.can_manage_assets %}
     <a href="{% url 'assets:create' %}" class="btn btn-primary">+ New Asset</a>
@@ -31,7 +31,7 @@
 
 {% if recent_assets %}
 <div class="card" style="margin-top:1rem">
-  <h2 style="margin-top:0">Recently Added</h2>
+  <h2 class="section-title">Recently Added</h2>
   <div class="table-wrap">
     <table class="data-table">
       <thead><tr><th>Product</th><th>Barcode</th><th>Serial</th><th>Added</th></tr></thead>

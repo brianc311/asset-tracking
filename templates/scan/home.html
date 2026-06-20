@@ -15,12 +15,25 @@
 </div>
 
 <div class="card no-print">
+  <h2 style="margin-top:0">Enter or Scan Barcode</h2>
+  <label class="form-label">Type or paste barcode value</label>
+  <div class="toolbar" style="align-items:stretch">
+    <input type="text" id="manual-barcode" class="form-input" style="margin:0;flex:1" placeholder="e.g. AT-A1B2C3D4E5F6">
+    <button type="button" id="manual-go" class="btn btn-primary">Go</button>
+  </div>
+  <p style="font-size:0.875rem;color:var(--text-muted);margin:0.5rem 0 0">
+    Works on any connection. Use this if the camera is blocked.
+  </p>
+</div>
+
+<div class="card no-print" id="camera-section">
   <h2 style="margin-top:0">Camera Scanner</h2>
-  <div id="reader" style="width:100%"></div>
+  <div id="https-notice" class="notice-banner" style="display:none"></div>
+  <div id="reader" style="width:100%;min-height:200px"></div>
   <div class="toolbar">
     <button id="start-scan" class="btn btn-primary">Start Camera</button>
     <button id="stop-scan" class="btn btn-secondary" style="display:none">Stop Camera</button>
-    <a href="{% url 'scan:register' %}" class="btn btn-secondary">Manual Entry</a>
+    <a href="{% url 'scan:register' %}" class="btn btn-secondary">New Item (no barcode)</a>
   </div>
 </div>
 
@@ -37,17 +50,18 @@
   <h2 style="margin-top:0">Session Items</h2>
   <div class="table-wrap">
     <table class="data-table">
-      <thead><tr><th>Product</th><th>Barcode</th><th>Serial</th><th>Model</th></tr></thead>
+      <thead><tr><th>#</th><th>Product</th><th>Barcode</th><th>Serial</th><th>Model</th></tr></thead>
       <tbody>
         {% for asset in session_assets %}
         <tr>
+          <td>{{ asset.asset_number|default:"—" }}</td>
           <td><a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a></td>
           <td><code>{{ asset.barcode_value }}</code></td>
           <td>{{ asset.serial_number|default:"—" }}</td>
           <td>{{ asset.model_number|default:"—" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Scan a barcode to get started.</td></tr>
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Scan a barcode to get started.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -59,9 +73,47 @@
 <script>
 let html5QrCode = null;
 
+function goToBarcode(value) {
+  const code = (value || '').trim();
+  if (!code) {
+    AppModal.alert('Missing barcode', 'Enter a barcode value or scan one with the camera.');
+    return;
+  }
+  window.location.href = '/scan/register/' + encodeURIComponent(code) + '/';
+}
+
+document.getElementById('manual-go')?.addEventListener('click', () => {
+  goToBarcode(document.getElementById('manual-barcode').value);
+});
+
+document.getElementById('manual-barcode')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') goToBarcode(e.target.value);
+});
+
+const httpsNotice = document.getElementById('https-notice');
+const startBtn = document.getElementById('start-scan');
+
+if (!window.isSecureContext) {
+  httpsNotice.style.display = 'block';
+  httpsNotice.innerHTML =
+    '<strong>Camera blocked on HTTP.</strong> Phones require HTTPS for camera access over Wi‑Fi. ' +
+    'Use the barcode text box above, or run <code>run_dev_https.bat</code> on your laptop and open ' +
+    '<code>https://YOUR-IP:8443/scan/</code> (accept the security warning once).';
+  startBtn.disabled = true;
+  startBtn.title = 'Requires HTTPS on phone';
+}
+
 document.getElementById('start-scan')?.addEventListener('click', async () => {
+  if (!window.isSecureContext) {
+    await AppModal.alert(
+      'HTTPS required',
+      'Your phone blocks the camera on http:// addresses. Use manual barcode entry above, or connect via https:// on port 8443.'
+    );
+    return;
+  }
+
   html5QrCode = new Html5Qrcode("reader");
-  document.getElementById('start-scan').style.display = 'none';
+  startBtn.style.display = 'none';
   document.getElementById('stop-scan').style.display = 'inline-flex';
   try {
     await html5QrCode.start(
@@ -69,22 +121,29 @@ document.getElementById('start-scan')?.addEventListener('click', async () => {
       { fps: 10, qrbox: { width: 250, height: 250 } },
       (decodedText) => {
         html5QrCode.stop().then(() => {
-          document.getElementById('start-scan').style.display = 'inline-flex';
+          startBtn.style.display = 'inline-flex';
           document.getElementById('stop-scan').style.display = 'none';
-          window.location.href = '/scan/register/' + encodeURIComponent(decodedText) + '/';
+          goToBarcode(decodedText);
         });
-      }
+      },
+      () => {}
     );
   } catch (err) {
-    await AppModal.alert('Camera Error', err.message || 'Could not access camera.');
-    document.getElementById('start-scan').style.display = 'inline-flex';
+    let msg = err.message || 'Could not access camera.';
+    if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+      msg = 'Camera permission denied. Allow camera access in your browser settings, then try again.';
+    } else if (!window.isSecureContext) {
+      msg = 'Camera requires HTTPS. Use manual barcode entry or run run_dev_https.bat on your laptop.';
+    }
+    await AppModal.alert('Camera Error', msg);
+    startBtn.style.display = 'inline-flex';
     document.getElementById('stop-scan').style.display = 'none';
   }
 });
 
 document.getElementById('stop-scan')?.addEventListener('click', () => {
   html5QrCode?.stop().then(() => {
-    document.getElementById('start-scan').style.display = 'inline-flex';
+    startBtn.style.display = 'inline-flex';
     document.getElementById('stop-scan').style.display = 'none';
   });
 });

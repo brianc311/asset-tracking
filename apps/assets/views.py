@@ -25,12 +25,15 @@ def asset_list(request):
     q = request.GET.get("q", "").strip()
     qs = Asset.objects.filter(is_archived=show_archived)
     if q:
-        qs = qs.filter(
+        filters = (
             Q(product_name__icontains=q)
             | Q(barcode_value__icontains=q)
             | Q(serial_number__icontains=q)
             | Q(model_number__icontains=q)
         )
+        if q.isdigit():
+            filters |= Q(asset_number=int(q))
+        qs = qs.filter(filters)
     return render(
         request,
         "assets/list.html",

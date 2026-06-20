@@ -2,17 +2,12 @@ from django import forms
 
 from apps.assets.models import Asset
 
-PHOTO_INPUT_ATTRS = {
-    "class": "form-input",
-    "accept": "image/*",
-    "capture": "environment",
-}
-
 
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Asset
         fields = [
+            "asset_number",
             "product_name",
             "serial_number",
             "model_number",
@@ -23,6 +18,9 @@ class AssetForm(forms.ModelForm):
             "barcode_value",
         ]
         widgets = {
+            "asset_number": forms.NumberInput(
+                attrs={"class": "form-input", "placeholder": "Leave blank to auto-assign"}
+            ),
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Product name"}),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
             "model_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Model number"}),
@@ -30,13 +28,18 @@ class AssetForm(forms.ModelForm):
             "comments": forms.Textarea(attrs={"class": "form-input", "rows": 3, "placeholder": "Comments"}),
             "barcode_type": forms.Select(attrs={"class": "form-input"}),
             "barcode_value": forms.TextInput(attrs={"class": "form-input", "placeholder": "Leave blank to auto-generate"}),
+            "photo": forms.FileInput(attrs={"class": "photo-file-input", "accept": "image/*"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["barcode_value"].required = False
-        self.fields["photo"].widget.attrs.update(PHOTO_INPUT_ATTRS)
-        self.fields["photo"].help_text = "On your phone, tap to take a photo or pick one from your gallery."
+        self.fields["asset_number"].required = False
+        self.fields["asset_number"].help_text = "Leave blank to auto-assign the next number."
+
+    def clean_asset_number(self):
+        value = self.cleaned_data.get("asset_number")
+        return value or None
 
 
 class BulkActionForm(forms.Form):

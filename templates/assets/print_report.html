@@ -28,7 +28,7 @@
     <tbody>
       {% for asset in assets %}
       <tr>
-        <td>{{ forloop.counter }}</td>
+        <td>{{ asset.asset_number|default:"—" }}</td>
         <td>{{ asset.product_name }}</td>
         <td>{{ asset.serial_number|default:"—" }}</td>
         <td>{{ asset.model_number|default:"—" }}</td>

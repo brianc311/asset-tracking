@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Register Asset — {{ branding.site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{% if existing %}Update{% else %}Register{% endif %} Asset</h1>
@@ -9,9 +10,14 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {% for field in form %}
-    <label class="form-label">{{ field.label }}</label>
-    {{ field }}
-    {% if field.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:-0.5rem 0 0.75rem">{{ field.help_text }}</p>{% endif %}
+      {% if field.name == 'photo' %}
+        {% include "assets/photo_picker.html" with field=field asset=existing %}
+      {% else %}
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p style="font-size:0.875rem;color:var(--text-muted);margin:-0.5rem 0 0.75rem">{{ field.help_text }}</p>{% endif %}
+        {% if field.errors %}<p style="color:var(--danger);font-size:0.875rem">{{ field.errors.0 }}</p>{% endif %}
+      {% endif %}
     {% endfor %}
     <div class="toolbar" style="margin-top:1rem">
       <button type="submit" class="btn btn-primary">Save to Database</button>
@@ -19,4 +25,9 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/photo-picker.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', () => initPhotoPicker('.photo-picker'));</script>
 {% endblock %}

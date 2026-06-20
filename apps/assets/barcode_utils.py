@@ -71,9 +71,9 @@ def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
     elements = [Paragraph(title, title_style), Spacer(1, 0.2 * inch)]
 
     data = [["#", "Product", "Serial", "Model", "Barcode", "Location", "Comments"]]
-    for i, asset in enumerate(assets, 1):
+    for asset in assets:
         data.append([
-            str(i),
+            str(asset.asset_number or "—"),
             asset.product_name[:30],
             asset.serial_number[:20] or "—",
             asset.model_number[:20] or "—",

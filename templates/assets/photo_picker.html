@@ -1,0 +1,17 @@
+<label class="form-label">{{ field.label }}</label>
+<div class="photo-picker">
+  <div class="photo-picker-preview" id="photo-preview">
+    {% if asset and asset.photo %}
+    <img src="{{ asset.photo.url }}" alt="Current photo">
+    {% else %}
+    <span class="photo-picker-placeholder">No photo yet</span>
+    {% endif %}
+  </div>
+  <div class="toolbar photo-picker-actions">
+    <button type="button" class="btn btn-primary photo-take-btn">📷 Take Photo</button>
+    <button type="button" class="btn btn-secondary photo-gallery-btn">🖼 Choose from Gallery</button>
+    <button type="button" class="btn btn-secondary photo-clear-btn" style="display:none">Remove</button>
+  </div>
+  <div style="position:absolute;width:0;height:0;overflow:hidden;opacity:0">{{ field }}</div>
+  {% if field.help_text %}<p class="photo-picker-help">{{ field.help_text }}</p>{% endif %}
+</div>

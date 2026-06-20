@@ -10,7 +10,7 @@
 
 <div class="card-grid">
   <div class="card">
-    <h2 style="margin-top:0">{{ asset.product_name }}</h2>
+    <h2 style="margin-top:0">#{{ asset.asset_number }} — {{ asset.product_name }}</h2>
     <p><strong>Barcode:</strong> <code>{{ asset.barcode_value }}</code> ({{ asset.get_barcode_type_display }})</p>
     <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
     <p><strong>Model:</strong> {{ asset.model_number|default:"—" }}</p>

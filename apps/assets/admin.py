@@ -8,6 +8,7 @@ from apps.assets.models import Asset
 @admin.register(Asset, site=recaptcha_admin_site)
 class AssetAdmin(admin.ModelAdmin):
     list_display = (
+        "asset_number",
         "product_name",
         "barcode_value",
         "serial_number",

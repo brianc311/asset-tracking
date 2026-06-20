@@ -16,6 +16,7 @@ class Asset(models.Model):
         EAN13 = "ean13", "EAN-13"
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    asset_number = models.PositiveIntegerField(unique=True, null=True, blank=True, db_index=True)
     barcode_value = models.CharField(max_length=128, unique=True, db_index=True)
     barcode_type = models.CharField(
         max_length=20,
@@ -50,7 +51,7 @@ class Asset(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["asset_number", "-created_at"]
 
     def __str__(self):
         return f"{self.product_name} ({self.barcode_value})"
@@ -69,4 +70,9 @@ class Asset(models.Model):
     def save(self, *args, **kwargs):
         if not self.barcode_value:
             self.barcode_value = self.generate_barcode_value()
+        if self.asset_number is None:
+            from django.db.models import Max
+
+            current_max = Asset.objects.aggregate(m=Max("asset_number"))["m"] or 0
+            self.asset_number = current_max + 1
         super().save(*args, **kwargs)
