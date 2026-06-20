@@ -2,6 +2,7 @@ from django import forms
 from django_recaptcha.fields import ReCaptchaField
 from django_recaptcha.widgets import ReCaptchaV2Checkbox
 
+from apps.assets.forms import PHOTO_INPUT_ATTRS
 from apps.assets.models import Asset
 
 
@@ -36,3 +37,5 @@ class ScanAssetForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["barcode_value"].required = False
+        self.fields["photo"].widget.attrs.update(PHOTO_INPUT_ATTRS)
+        self.fields["photo"].help_text = "Tap to take a photo with your camera or choose from gallery."

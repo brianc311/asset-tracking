@@ -2,6 +2,12 @@ from django import forms
 
 from apps.assets.models import Asset
 
+PHOTO_INPUT_ATTRS = {
+    "class": "form-input",
+    "accept": "image/*",
+    "capture": "environment",
+}
+
 
 class AssetForm(forms.ModelForm):
     class Meta:
@@ -29,6 +35,8 @@ class AssetForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["barcode_value"].required = False
+        self.fields["photo"].widget.attrs.update(PHOTO_INPUT_ATTRS)
+        self.fields["photo"].help_text = "On your phone, tap to take a photo or pick one from your gallery."
 
 
 class BulkActionForm(forms.Form):
