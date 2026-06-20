@@ -34,7 +34,7 @@
   <h2 class="section-title">Recently Added</h2>
   <div class="table-wrap">
     <table class="data-table">
-      <thead><tr><th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Added</th></tr></thead>
+      <thead><tr><th>#</th><th>Barcode</th><th>Product</th><th>Serial</th><th>Model</th><th>Added</th></tr></thead>
       <tbody>
         {% for asset in recent_assets %}
         <tr>
@@ -42,6 +42,7 @@
           <td><code>{{ asset.barcode_value }}</code></td>
           <td><a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a></td>
           <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.model_number|default:"—" }}</td>
           <td>{{ asset.created_at|date:"M j, Y" }}</td>
         </tr>
         {% endfor %}
