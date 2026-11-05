@@ -1,4 +1,5 @@
 import os
+import socket
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,12 +8,34 @@ load_dotenv(override=True)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _local_ipv4_hosts():
+    """LAN IPs on this machine so phones can hit the local HTTPS server."""
+    hosts = set()
+    try:
+        hostname = socket.gethostname()
+        hosts.update(
+            info[4][0]
+            for info in socket.getaddrinfo(hostname, None, socket.AF_INET)
+            if info[4][0] and not info[4][0].startswith("127.")
+        )
+    except OSError:
+        pass
+    try:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe.connect(("8.8.8.8", 80))
+        hosts.add(probe.getsockname()[0])
+        probe.close()
+    except OSError:
+        pass
+    return sorted(hosts)
+
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-key-change-in-production")
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 if DEBUG:
-    for host in ("localhost", "127.0.0.1"):
+    for host in ("localhost", "127.0.0.1", * _local_ipv4_hosts()):
         if host not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(host)
 
@@ -141,6 +164,15 @@ elif DEBUG:
         "https://localhost:8444",
         "https://127.0.0.1:8444",
     ]
+    for host in _local_ipv4_hosts():
+        CSRF_TRUSTED_ORIGINS.extend(
+            [
+                f"http://{host}:8000",
+                f"http://{host}:8001",
+                f"https://{host}:8443",
+                f"https://{host}:8444",
+            ]
+        )
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
