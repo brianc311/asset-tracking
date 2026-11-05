@@ -36,3 +36,28 @@ class BatchFormTests(TestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn("mac_address_2", form.errors)
+
+
+class BatchViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+
+    def test_start_get_ok(self):
+        response = self.client.get("/scan/batch/start/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_home_redirects_without_session(self):
+        response = self.client.get("/scan/batch/")
+        self.assertRedirects(response, "/scan/batch/start/")
+
+    def test_start_post_opens_home(self):
+        response = self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        follow = self.client.get("/scan/batch/")
+        self.assertContains(follow, "HQ")
+        self.assertContains(follow, "AP")
+        self.assertContains(follow, "Skip 2nd MAC")
