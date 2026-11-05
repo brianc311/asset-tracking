@@ -26,6 +26,8 @@ class Asset(models.Model):
 
     product_name = models.CharField(max_length=255)
     serial_number = models.CharField(max_length=128, blank=True)
+    mac_address = models.CharField(max_length=17, blank=True, db_index=True)
+    mac_address_2 = models.CharField(max_length=17, blank=True, db_index=True)
     model_number = models.CharField(max_length=128, blank=True)
     site_name = models.CharField(
         max_length=120,
@@ -72,6 +74,45 @@ class Asset(models.Model):
         if request:
             return request.build_absolute_uri(path)
         return path
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.db.models import Q
+
+        super().clean()
+        errors = {}
+        serial = (self.serial_number or "").strip()
+        site = (self.site_name or "").strip()
+        macs = [m for m in (self.mac_address, self.mac_address_2) if m]
+
+        if serial and site:
+            qs = Asset.objects.filter(
+                is_archived=False, site_name=site, serial_number=serial
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                errors["serial_number"] = "This serial is already used at this site."
+
+        if len(macs) == 2 and macs[0] == macs[1]:
+            errors["mac_address_2"] = "MAC 2 must be different from MAC 1."
+
+        for field_name, value in (
+            ("mac_address", self.mac_address),
+            ("mac_address_2", self.mac_address_2),
+        ):
+            if not value:
+                continue
+            qs = Asset.objects.filter(is_archived=False).filter(
+                Q(mac_address=value) | Q(mac_address_2=value)
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                errors[field_name] = "This MAC address is already in use."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if not self.barcode_value:
