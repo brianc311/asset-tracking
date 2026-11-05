@@ -30,3 +30,36 @@ class BatchReportTests(TestCase):
         self.assertContains(response, 'alt="SN1"')
         self.assertContains(response, 'alt="AA:BB:CC:DD:EE:01"')
         self.assertContains(response, 'alt="AA:BB:CC:DD:EE:02"')
+
+
+class BatchLabelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN1",
+                "mac_address": "aa:bb:cc:dd:ee:01",
+                "mac_address_2": "aa:bb:cc:dd:ee:02",
+            },
+        )
+
+    def test_device_mode_one_label(self):
+        response = self.client.get("/scan/batch/labels/?mode=device")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-label-count="1"')
+        self.assertContains(response, "SN1")
+        self.assertContains(response, "AA:BB:CC:DD:EE:01")
+
+    def test_value_mode_three_labels(self):
+        response = self.client.get("/scan/batch/labels/?mode=value")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-label-count="3"')
+        self.assertContains(response, "SN1")
+        self.assertContains(response, "AA:BB:CC:DD:EE:01")
+        self.assertContains(response, "AA:BB:CC:DD:EE:02")

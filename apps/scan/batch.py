@@ -225,4 +225,55 @@ def batch_report(request):
 @login_required
 @asset_manager_required
 def batch_labels(request):
-    return redirect("scan:batch_home")
+    _, _, site, product, assets = _batch_target_assets(request)
+    if not site:
+        return redirect("scan:batch_start")
+
+    mode = request.GET.get("mode", "device")
+    labels = []
+    if mode == "value":
+        for asset in assets:
+            if asset.serial_number:
+                labels.append(
+                    {
+                        "title": "Serial",
+                        "value": asset.serial_number,
+                        "barcode": barcode_data_uri(asset.serial_number),
+                    }
+                )
+            if asset.mac_address:
+                labels.append(
+                    {
+                        "title": "MAC",
+                        "value": asset.mac_address,
+                        "barcode": barcode_data_uri(asset.mac_address),
+                    }
+                )
+            if asset.mac_address_2:
+                labels.append(
+                    {
+                        "title": "MAC 2",
+                        "value": asset.mac_address_2,
+                        "barcode": barcode_data_uri(asset.mac_address_2),
+                    }
+                )
+    else:
+        for asset in assets:
+            labels.append(
+                {
+                    "title": f"{asset.product_name} — {asset.site_name}",
+                    "value": asset.serial_number,
+                    "extra": " / ".join(
+                        mac for mac in (asset.mac_address, asset.mac_address_2) if mac
+                    ),
+                    "barcode": barcode_data_uri(asset.serial_number) if asset.serial_number else "",
+                    "mac_barcode": barcode_data_uri(asset.mac_address) if asset.mac_address else "",
+                    "mac2_barcode": barcode_data_uri(asset.mac_address_2) if asset.mac_address_2 else "",
+                }
+            )
+
+    return render(
+        request,
+        "scan/batch_labels.html",
+        {"labels": labels, "mode": mode, "site_name": site, "product_name": product},
+    )

@@ -73,7 +73,8 @@
     <div class="toolbar no-print" style="margin-top:1rem">
       <button type="button" class="btn btn-danger" data-bulk-action="archive" form="batch-archive-form">Archive selected</button>
       <a href="{% url 'scan:batch_report' %}" class="btn btn-secondary" id="batch-report-link">Print report</a>
-      <a href="{% url 'scan:batch_labels' %}" class="btn btn-secondary">Print labels</a>
+      <a href="{% url 'scan:batch_labels' %}?mode=device" class="btn btn-secondary batch-label-link">Print device labels</a>
+      <a href="{% url 'scan:batch_labels' %}?mode=value" class="btn btn-secondary batch-label-link">Print value labels</a>
     </div>
   </div>
 
@@ -97,6 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       window.location.href = `${reportLink.href}?ids=${encodeURIComponent(selectedIds.join(','))}`;
     }
+  });
+  document.querySelectorAll('.batch-label-link').forEach(link => {
+    link.addEventListener('click', event => {
+      const selectedIds = Array.from(document.querySelectorAll('#batch-items-table .row-select:checked'))
+        .map(checkbox => checkbox.value);
+      if (selectedIds.length) {
+        event.preventDefault();
+        const url = new URL(link.href);
+        url.searchParams.set('ids', selectedIds.join(','));
+        window.location.href = url.toString();
+      }
+    });
   });
 });
 </script>
