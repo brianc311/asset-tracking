@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Batch Report — {{ branding.site_name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .batch-barcode { display:block; max-width:220px; height:60px; object-fit:contain; margin-top:0.35rem; }
+  @media print {
+    .main-content { max-width:none; padding:0; }
+    .batch-report-table { font-size:10pt; }
+    .batch-barcode { max-width:180px; height:48px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="toolbar no-print" style="margin-bottom:1rem">
+  <button type="button" class="btn btn-primary" onclick="window.print()">Print report</button>
+  <a href="{% url 'scan:batch_home' %}" class="btn btn-secondary">Back to batch</a>
+</div>
+
+<h1 class="page-title">Batch Report</h1>
+<p class="page-subtitle">
+  Site: <strong>{{ site_name }}</strong> —
+  Type: <strong>{{ product_name }}</strong> —
+  Total: <strong>{{ total }}</strong>
+</p>
+
+<div class="table-wrap">
+  <table class="data-table batch-report-table">
+    <thead>
+      <tr><th>Site</th><th>Type</th><th>Serial</th><th>MAC 1</th><th>MAC 2</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.asset.site_name }}</td>
+        <td>{{ row.asset.product_name }}</td>
+        <td>
+          {{ row.asset.serial_number|default:"—" }}
+          {% if row.serial_barcode %}<img class="batch-barcode" alt="{{ row.asset.serial_number }}" src="{{ row.serial_barcode }}">{% endif %}
+        </td>
+        <td>
+          {{ row.asset.mac_address|default:"—" }}
+          {% if row.mac_barcode %}<img class="batch-barcode" alt="{{ row.asset.mac_address }}" src="{{ row.mac_barcode }}">{% endif %}
+        </td>
+        <td>
+          {{ row.asset.mac_address_2|default:"—" }}
+          {% if row.mac2_barcode %}<img class="batch-barcode" alt="{{ row.asset.mac_address_2 }}" src="{{ row.mac2_barcode }}">{% endif %}
+        </td>
+        <td>{{ row.asset.created_at }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No assets selected.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

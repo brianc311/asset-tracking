@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
+from apps.assets.barcode_utils import barcode_data_uri
 from apps.assets.models import Asset
 from apps.assets.product_types import get_known_product_names
 from apps.assets.site_names import get_known_site_names
@@ -184,10 +185,41 @@ def batch_end(request):
     return redirect("scan:batch_start")
 
 
+def _batch_target_assets(request):
+    key, meta, site, product = require_active_batch(request)
+    if not site:
+        return None, None, None, None, Asset.objects.none()
+    ids_param = request.GET.get("ids") or request.POST.get("asset_ids") or ""
+    ids = [int(value) for value in ids_param.split(",") if value.strip().isdigit()]
+    assets = Asset.objects.filter(is_archived=False, site_name=site, product_name=product)
+    if ids:
+        assets = assets.filter(pk__in=ids)
+    elif key:
+        assets = assets.filter(pk__in=request.session.get(key, []))
+    return key, meta, site, product, assets.order_by("created_at")
+
+
 @login_required
 @asset_manager_required
 def batch_report(request):
-    return redirect("scan:batch_home")
+    _, _, site, product, assets = _batch_target_assets(request)
+    if not site:
+        return redirect("scan:batch_start")
+    rows = []
+    for asset in assets:
+        rows.append(
+            {
+                "asset": asset,
+                "serial_barcode": barcode_data_uri(asset.serial_number) if asset.serial_number else "",
+                "mac_barcode": barcode_data_uri(asset.mac_address) if asset.mac_address else "",
+                "mac2_barcode": barcode_data_uri(asset.mac_address_2) if asset.mac_address_2 else "",
+            }
+        )
+    return render(
+        request,
+        "scan/batch_report.html",
+        {"rows": rows, "site_name": site, "product_name": product, "total": len(rows)},
+    )
 
 
 @login_required

@@ -1,3 +1,4 @@
+import base64
 import io
 
 import barcode
@@ -33,7 +34,7 @@ def generate_1d_barcode_image(barcode_value: str, barcode_type: str = "code128")
         code_class = barcode.ean.EuropeanArticleNumber13
         value = barcode_value.zfill(12)[:12]
     else:
-        code_class = barcode.code128.Code128
+        code_class = barcode.Code128
         value = barcode_value
 
     code = code_class(value, writer=writer)
@@ -41,6 +42,15 @@ def generate_1d_barcode_image(barcode_value: str, barcode_type: str = "code128")
     code.write(buffer)
     buffer.seek(0)
     return buffer
+
+
+def barcode_png_for_value(value: str) -> bytes:
+    return generate_1d_barcode_image(value, "code128").getvalue()
+
+
+def barcode_data_uri(value: str) -> str:
+    png = barcode_png_for_value(value)
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
 
 
 def barcode_image_response(asset: Asset) -> HttpResponse:
