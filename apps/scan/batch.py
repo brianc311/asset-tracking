@@ -2,6 +2,7 @@ import uuid
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -100,10 +101,56 @@ def batch_home(request):
 
 
 @login_required
-@asset_manager_required
 @require_POST
 def batch_save(request):
-    return redirect("scan:batch_home")
+    if not request.user.can_manage_assets():
+        return redirect("accounts:dashboard")
+    key, meta, site, product = require_active_batch(request)
+    if not site:
+        return redirect("scan:batch_start")
+
+    form = BatchItemForm(request.POST)
+    if form.is_valid():
+        asset = Asset(
+            site_name=site,
+            product_name=product,
+            serial_number=form.cleaned_data["serial_number"].strip(),
+            mac_address=form.cleaned_data["mac_address"],
+            mac_address_2=form.cleaned_data["mac_address_2"],
+            barcode_value=Asset.generate_barcode_value(),
+            created_by=request.user,
+            updated_by=request.user,
+        )
+        try:
+            asset.full_clean()
+            asset.save()
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            ids = request.session.get(key, [])
+            ids.append(asset.pk)
+            request.session[key] = ids
+            request.session.modified = True
+            return redirect("scan:batch_home")
+
+    started = meta.get("started_at")
+    started_display = ""
+    if started:
+        parsed = parse_datetime(started)
+        if parsed:
+            started_display = timezone.localtime(parsed).strftime("%b %d, %Y %I:%M %p")
+    return render(
+        request,
+        "scan/batch_home.html",
+        {
+            "form": form,
+            "assets": _session_assets(request, key),
+            "site_name": site,
+            "product_name": product,
+            "started_at_display": started_display,
+        },
+        status=200,
+    )
 
 
 @login_required

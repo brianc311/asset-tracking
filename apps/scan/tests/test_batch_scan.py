@@ -73,3 +73,63 @@ class BatchViewTests(TestCase):
         dashboard_url = reverse("accounts:dashboard")
         self.assertRedirects(start_response, dashboard_url)
         self.assertRedirects(end_response, dashboard_url)
+
+
+class BatchSaveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_skip_mac_2_saves_blank(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "mac_address_2": "", "skip_mac_2": "on"},
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN1")
+        self.assertEqual(asset.mac_address, "AA:BB:CC:DD:EE:01")
+        self.assertEqual(asset.mac_address_2, "")
+        self.assertEqual(asset.site_name, "HQ")
+        self.assertEqual(asset.product_name, "AP")
+        self.assertIsNotNone(asset.created_at)
+
+    def test_missing_mac_2_rejected(self):
+        self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "mac_address_2": ""},
+        )
+        self.assertFalse(Asset.objects.filter(serial_number="SN1").exists())
+
+    def test_duplicate_serial_same_site_rejected(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN1",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST",
+        )
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.assertEqual(Asset.objects.filter(serial_number="SN1").count(), 1)
+        self.assertContains(response, "already used", status_code=200)
+
+    def test_duplicate_mac_rejected(self):
+        Asset.objects.create(
+            product_name="Switch",
+            site_name="Other",
+            serial_number="SN9",
+            mac_address="AA:BB:CC:DD:EE:01",
+            barcode_value="AT-EXIST-MAC",
+        )
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN2", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
+        self.assertContains(response, "already in use", status_code=200)
