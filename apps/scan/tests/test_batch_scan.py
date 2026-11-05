@@ -133,3 +133,33 @@ class BatchSaveTests(TestCase):
         )
         self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
         self.assertContains(response, "already in use", status_code=200)
+
+
+class BatchArchiveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN2", "mac_address": "aa:bb:cc:dd:ee:02", "skip_mac_2": "on"},
+        )
+
+    def test_archive_one(self):
+        asset = Asset.objects.get(serial_number="SN1")
+
+        self.client.post("/scan/batch/archive/", {"asset_ids": str(asset.pk)})
+
+        asset.refresh_from_db()
+        self.assertTrue(asset.is_archived)
+        self.assertIsNotNone(asset.archived_at)
+        home = self.client.get("/scan/batch/")
+        self.assertNotContains(home, "SN1")
+        self.assertContains(home, "SN2")

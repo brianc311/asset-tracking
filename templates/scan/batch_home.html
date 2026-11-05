@@ -44,17 +44,21 @@
   </form>
 </div>
 
-<form method="post" action="{% url 'scan:batch_archive' %}">
+<form id="batch-archive-form" method="post" action="{% url 'scan:batch_archive' %}">
   {% csrf_token %}
-  <div class="card">
-    <h2 style="margin-top:0">Batch Items</h2>
-    <div class="table-wrap">
-      <table class="data-table">
+  <input type="hidden" name="action" value="">
+  <input type="hidden" name="asset_ids" value="">
+</form>
+
+<div class="card">
+  <h2 style="margin-top:0">Batch Items</h2>
+  <div class="table-wrap">
+      <table class="data-table" id="batch-items-table">
         <thead><tr><th>Select</th><th>#</th><th>Serial</th><th>MAC 1</th><th>MAC 2</th></tr></thead>
         <tbody>
           {% for asset in assets %}
           <tr>
-            <td><input type="checkbox" class="row-select" name="asset_ids" value="{{ asset.pk }}"></td>
+            <td><input type="checkbox" class="row-select" value="{{ asset.pk }}"></td>
             <td>{{ asset.asset_number|default:"—" }}</td>
             <td>{{ asset.serial_number|default:"—" }}</td>
             <td>{{ asset.mac_address|default:"—" }}</td>
@@ -67,12 +71,11 @@
       </table>
     </div>
     <div class="toolbar no-print" style="margin-top:1rem">
-      <button type="submit" class="btn btn-danger">Archive selected</button>
+      <button type="button" class="btn btn-danger" data-bulk-action="archive" form="batch-archive-form">Archive selected</button>
       <a href="{% url 'scan:batch_report' %}" class="btn btn-secondary">Print report</a>
       <a href="{% url 'scan:batch_labels' %}" class="btn btn-secondary">Print labels</a>
     </div>
   </div>
-</form>
 
 <form method="post" action="{% url 'scan:batch_end' %}" class="no-print">
   {% csrf_token %}
@@ -83,4 +86,9 @@
 {% block extra_js %}
 <script src="{% static 'js/field-scanner.js' %}"></script>
 <script src="{% static 'js/batch-scan.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initBulkSelect('batch-items-table', 'batch-archive-form');
+});
+</script>
 {% endblock %}

@@ -154,9 +154,18 @@ def batch_save(request):
 
 
 @login_required
-@asset_manager_required
 @require_POST
 def batch_archive(request):
+    if not request.user.can_manage_assets():
+        return redirect("accounts:dashboard")
+    key, meta, site, product = require_active_batch(request)
+    if not site:
+        return redirect("scan:batch_start")
+    ids = [int(value) for value in request.POST.get("asset_ids", "").split(",") if value.strip().isdigit()]
+    Asset.objects.filter(pk__in=ids, site_name=site).update(
+        is_archived=True,
+        archived_at=timezone.now(),
+    )
     return redirect("scan:batch_home")
 
 
