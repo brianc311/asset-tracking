@@ -13,6 +13,8 @@
     <h2 style="margin-top:0">#{{ asset.asset_number }} — {{ asset.product_name }}</h2>
     <p><strong>Barcode:</strong> <code>{{ asset.barcode_value }}</code> ({{ asset.get_barcode_type_display }})</p>
     <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
+    <p><strong>MAC:</strong> {{ asset.mac_address|default:"—" }}</p>
+    <p><strong>MAC 2:</strong> {{ asset.mac_address_2|default:"—" }}</p>
     <p><strong>Model:</strong> {{ asset.model_number|default:"—" }}</p>
     <p><strong>Site:</strong> {{ asset.site_name|default:"—" }}</p>
     <p><strong>Location:</strong> {{ asset.location|default:"—" }}</p>

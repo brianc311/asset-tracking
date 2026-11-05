@@ -18,6 +18,30 @@ def make_asset(**kwargs):
     return Asset.objects.create(**defaults)
 
 
+class AssetListMacSearchTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="staff",
+            password="x",
+            role=User.Role.STAFF,
+        )
+        self.client.force_login(user)
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN1",
+            mac_address="AA:BB:CC:DD:EE:01",
+            barcode_value="AT-MAC-SEARCH",
+        )
+
+    def test_search_by_mac(self):
+        response = self.client.get("/assets/", {"q": "AA:BB:CC:DD:EE:01"})
+
+        self.assertContains(response, "SN1")
+        self.assertContains(response, "AA:BB:CC:DD:EE:01")
+
+
 class AssetMacUniquenessTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="asset-test-user")
