@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 
 from apps.assets.models import Asset
 from apps.scan.forms import BatchItemForm, StartBatchForm
@@ -61,3 +62,14 @@ class BatchViewTests(TestCase):
         self.assertContains(follow, "HQ")
         self.assertContains(follow, "AP")
         self.assertContains(follow, "Skip 2nd MAC")
+
+    def test_non_staff_user_cannot_access_batch_views(self):
+        user = User.objects.create_user(username="user", password="x", role=User.Role.USER)
+        self.client.force_login(user)
+
+        start_response = self.client.get("/scan/batch/start/")
+        end_response = self.client.post("/scan/batch/end/")
+
+        dashboard_url = reverse("accounts:dashboard")
+        self.assertRedirects(start_response, dashboard_url)
+        self.assertRedirects(end_response, dashboard_url)

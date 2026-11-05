@@ -1,4 +1,5 @@
 import uuid
+from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
@@ -13,6 +14,16 @@ from apps.scan.forms import BatchItemForm, StartBatchForm
 
 BATCH_KEY = "batch_session_key"
 BATCH_META = "batch_sessions_meta"
+
+
+def asset_manager_required(view_func):
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.can_manage_assets():
+            return redirect("accounts:dashboard")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
 
 
 def _get_meta(request, key):
@@ -40,9 +51,8 @@ def _session_assets(request, key):
 
 
 @login_required
+@asset_manager_required
 def batch_start(request):
-    if not request.user.can_manage_assets():
-        return redirect("accounts:dashboard")
     form = StartBatchForm(
         request.POST or None,
         known_site_names=get_known_site_names(request),
@@ -65,9 +75,8 @@ def batch_start(request):
 
 
 @login_required
+@asset_manager_required
 def batch_home(request):
-    if not request.user.can_manage_assets():
-        return redirect("accounts:dashboard")
     key, meta, site, product = require_active_batch(request)
     if not site:
         return redirect("scan:batch_start")
@@ -91,18 +100,21 @@ def batch_home(request):
 
 
 @login_required
+@asset_manager_required
 @require_POST
 def batch_save(request):
     return redirect("scan:batch_home")
 
 
 @login_required
+@asset_manager_required
 @require_POST
 def batch_archive(request):
     return redirect("scan:batch_home")
 
 
 @login_required
+@asset_manager_required
 @require_POST
 def batch_end(request):
     key = request.session.get(BATCH_KEY)
@@ -117,10 +129,12 @@ def batch_end(request):
 
 
 @login_required
+@asset_manager_required
 def batch_report(request):
     return redirect("scan:batch_home")
 
 
 @login_required
+@asset_manager_required
 def batch_labels(request):
     return redirect("scan:batch_home")
