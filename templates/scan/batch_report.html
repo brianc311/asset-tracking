@@ -13,6 +13,7 @@
 {% block content %}
 <div class="toolbar no-print" style="margin-bottom:1rem">
   <button type="button" class="btn btn-primary" onclick="window.print()">Print report</button>
+  <a href="?{{ pdf_query }}" class="btn btn-primary">Download PDF</a>
   <a href="{% url 'scan:batch_home' %}" class="btn btn-secondary">Back to batch</a>
 </div>
 

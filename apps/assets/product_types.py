@@ -33,6 +33,7 @@ def apply_product_type_fields(form, known_product_names, *, default_product_name
     )
     form.fields["new_product_name"] = forms.CharField(
         required=False,
+        max_length=255,
         label="New device type",
         widget=forms.TextInput(
             attrs={

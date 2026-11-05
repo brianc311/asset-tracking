@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
-from apps.assets.barcode_utils import barcode_data_uri
+from apps.assets.barcode_utils import barcode_data_uri, batch_report_pdf_response
 from apps.assets.models import Asset
 from apps.assets.product_types import get_known_product_names
 from apps.assets.site_names import get_known_site_names
@@ -126,7 +126,13 @@ def batch_save(request):
             asset.full_clean()
             asset.save()
         except ValidationError as exc:
-            form.add_error(None, exc)
+            if hasattr(exc, "error_dict"):
+                for field_name, errors in exc.error_dict.items():
+                    target_field = field_name if field_name in form.fields else None
+                    for error in errors:
+                        form.add_error(target_field, error)
+            else:
+                form.add_error(None, exc)
         else:
             ids = request.session.get(key, [])
             ids.append(asset.pk)
@@ -194,8 +200,6 @@ def _batch_target_assets(request):
     assets = Asset.objects.filter(is_archived=False, site_name=site, product_name=product)
     if ids:
         assets = assets.filter(pk__in=ids)
-    elif key:
-        assets = assets.filter(pk__in=request.session.get(key, []))
     return key, meta, site, product, assets.order_by("created_at")
 
 
@@ -205,6 +209,11 @@ def batch_report(request):
     _, _, site, product, assets = _batch_target_assets(request)
     if not site:
         return redirect("scan:batch_start")
+    if request.GET.get("export") == "pdf":
+        return batch_report_pdf_response(assets, site_name=site, product_name=product)
+
+    pdf_params = request.GET.copy()
+    pdf_params["export"] = "pdf"
     rows = []
     for asset in assets:
         rows.append(
@@ -218,7 +227,13 @@ def batch_report(request):
     return render(
         request,
         "scan/batch_report.html",
-        {"rows": rows, "site_name": site, "product_name": product, "total": len(rows)},
+        {
+            "rows": rows,
+            "site_name": site,
+            "product_name": product,
+            "total": len(rows),
+            "pdf_query": pdf_params.urlencode(),
+        },
     )
 
 

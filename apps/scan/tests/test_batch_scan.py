@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from unittest.mock import patch
 
 from apps.assets.models import Asset
 from apps.scan.forms import BatchItemForm, StartBatchForm
@@ -12,6 +14,12 @@ class BatchFormTests(TestCase):
     def test_start_requires_site_and_type(self):
         form = StartBatchForm(data={"site_name": "", "product_name": ""}, known_site_names=[], known_product_names=[])
         self.assertFalse(form.is_valid())
+
+    def test_start_new_names_have_model_compatible_max_lengths(self):
+        form = StartBatchForm(known_site_names=[], known_product_names=[])
+
+        self.assertEqual(form.fields["new_site_name"].max_length, 120)
+        self.assertEqual(form.fields["new_product_name"].max_length, 255)
 
     def test_skip_mac_2_allows_blank(self):
         form = BatchItemForm(
@@ -133,6 +141,28 @@ class BatchSaveTests(TestCase):
         )
         self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
         self.assertContains(response, "already in use", status_code=200)
+
+    def test_model_errors_for_non_form_fields_become_non_field_errors(self):
+        validation_error = ValidationError(
+            {
+                "site_name": ["Invalid batch site."],
+                "serial_number": ["Invalid serial."],
+            }
+        )
+        with patch("apps.scan.batch.Asset.full_clean", side_effect=validation_error):
+            response = self.client.post(
+                "/scan/batch/save/",
+                {
+                    "serial_number": "SN2",
+                    "mac_address": "aa:bb:cc:dd:ee:01",
+                    "skip_mac_2": "on",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid batch site.")
+        self.assertContains(response, "Invalid serial.")
+        self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
 
 
 class BatchArchiveTests(TestCase):

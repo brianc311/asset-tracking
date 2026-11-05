@@ -34,6 +34,7 @@ class StartBatchForm(forms.Form):
         super().__init__(*args, **kwargs)
         apply_site_name_choices(self, known_site_names, default_site_name=default_site_name)
         apply_product_type_fields(self, known_product_names, default_product_name=default_product_name)
+        self.fields["new_site_name"].max_length = 120
         self.fields["site_name"].help_text = "Site for this batch."
         self.fields["product_name"].help_text = "Scan all of this type, then change type for the next batch."
 
