@@ -37,6 +37,8 @@ def asset_list(request):
             Q(product_name__icontains=q)
             | Q(barcode_value__icontains=q)
             | Q(serial_number__icontains=q)
+            | Q(mac_address__icontains=q)
+            | Q(mac_address_2__icontains=q)
             | Q(model_number__icontains=q)
             | Q(site_name__icontains=q)
             | Q(location__icontains=q)

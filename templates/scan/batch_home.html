@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Batch Scan — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Batch Scan</h1>
+<p class="page-subtitle">
+  Site: <strong>{{ site_name }}</strong> —
+  Type: <strong>{{ product_name }}</strong>
+  {% if started_at_display %}— Started {{ started_at_display }}{% endif %}
+</p>
+
+<div class="card" style="max-width:640px">
+  <form method="post" action="{% url 'scan:batch_save' %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="field-row">
+      <label class="form-label" for="{{ form.serial_number.id_for_label }}">{{ form.serial_number.label }}</label>
+      <div class="field-row-scan">
+        {{ form.serial_number }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.serial_number.id_for_label }}" data-scan-label="Serial number">📷 Scan</button>
+      </div>
+      {{ form.serial_number.errors }}
+    </div>
+    <div class="field-row">
+      <label class="form-label" for="{{ form.mac_address.id_for_label }}">MAC 1</label>
+      <div class="field-row-scan">
+        {{ form.mac_address }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.mac_address.id_for_label }}" data-scan-label="MAC 1">📷 Scan</button>
+      </div>
+      {{ form.mac_address.errors }}
+    </div>
+    <div class="field-row" id="mac-2-wrap">
+      <label class="form-label" for="{{ form.mac_address_2.id_for_label }}">MAC 2</label>
+      <div class="field-row-scan">
+        {{ form.mac_address_2 }}
+        <button type="button" class="btn btn-secondary btn-scan-field" data-scan-target="{{ form.mac_address_2.id_for_label }}" data-scan-label="MAC 2">📷 Scan</button>
+      </div>
+      {{ form.mac_address_2.errors }}
+    </div>
+    <div class="field-row">
+      <label for="{{ form.skip_mac_2.id_for_label }}">{{ form.skip_mac_2 }} {{ form.skip_mac_2.label }}</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Asset</button>
+  </form>
+</div>
+
+<form id="batch-archive-form" method="post" action="{% url 'scan:batch_archive' %}">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="">
+  <input type="hidden" name="asset_ids" value="">
+</form>
+
+<div class="card">
+  <h2 style="margin-top:0">Batch Items</h2>
+  <div class="table-wrap">
+      <table class="data-table" id="batch-items-table">
+        <thead><tr><th>Select</th><th>#</th><th>Serial</th><th>MAC 1</th><th>MAC 2</th></tr></thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr>
+            <td><input type="checkbox" class="row-select" value="{{ asset.pk }}"></td>
+            <td>{{ asset.asset_number|default:"—" }}</td>
+            <td>{{ asset.serial_number|default:"—" }}</td>
+            <td>{{ asset.mac_address|default:"—" }}</td>
+            <td>{{ asset.mac_address_2|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No assets in this batch yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="toolbar no-print" style="margin-top:1rem">
+      <button type="button" class="btn btn-danger" data-bulk-action="archive" form="batch-archive-form">Archive selected</button>
+      <a href="{% url 'scan:batch_report' %}" class="btn btn-secondary" id="batch-report-link">Print report</a>
+      <a href="{% url 'scan:batch_labels' %}?mode=device" class="btn btn-secondary batch-label-link">Print device labels</a>
+      <a href="{% url 'scan:batch_labels' %}?mode=value" class="btn btn-secondary batch-label-link">Print value labels</a>
+    </div>
+  </div>
+
+<form method="post" action="{% url 'scan:batch_end' %}" class="no-print">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-secondary">End batch</button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/field-scanner.js' %}"></script>
+<script src="{% static 'js/batch-scan.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initBulkSelect('batch-items-table', 'batch-archive-form');
+  const reportLink = document.getElementById('batch-report-link');
+  reportLink.addEventListener('click', event => {
+    const selectedIds = Array.from(document.querySelectorAll('#batch-items-table .row-select:checked'))
+      .map(checkbox => checkbox.value);
+    if (selectedIds.length) {
+      event.preventDefault();
+      window.location.href = `${reportLink.href}?ids=${encodeURIComponent(selectedIds.join(','))}`;
+    }
+  });
+  document.querySelectorAll('.batch-label-link').forEach(link => {
+    link.addEventListener('click', event => {
+      const selectedIds = Array.from(document.querySelectorAll('#batch-items-table .row-select:checked'))
+        .map(checkbox => checkbox.value);
+      if (selectedIds.length) {
+        event.preventDefault();
+        const url = new URL(link.href);
+        url.searchParams.set('ids', selectedIds.join(','));
+        window.location.href = url.toString();
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

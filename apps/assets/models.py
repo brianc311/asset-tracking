@@ -26,6 +26,8 @@ class Asset(models.Model):
 
     product_name = models.CharField(max_length=255)
     serial_number = models.CharField(max_length=128, blank=True)
+    mac_address = models.CharField(max_length=17, blank=True, db_index=True)
+    mac_address_2 = models.CharField(max_length=17, blank=True, db_index=True)
     model_number = models.CharField(max_length=128, blank=True)
     site_name = models.CharField(
         max_length=120,
@@ -72,6 +74,67 @@ class Asset(models.Model):
         if request:
             return request.build_absolute_uri(path)
         return path
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.db.models import Q
+
+        from apps.assets.mac import MAC_ERROR, normalize_mac
+
+        super().clean()
+        errors = {}
+        serial = (self.serial_number or "").strip()
+        site = (self.site_name or "").strip()
+        normalized_macs = {}
+
+        for field_name in ("mac_address", "mac_address_2"):
+            value = getattr(self, field_name)
+            if not value:
+                continue
+            try:
+                normalized_value = normalize_mac(value)
+            except ValueError:
+                errors[field_name] = MAC_ERROR
+                continue
+            setattr(self, field_name, normalized_value)
+            normalized_macs[field_name] = normalized_value
+
+        if not self.is_archived and serial and site:
+            qs = Asset.objects.filter(
+                is_archived=False, site_name=site, serial_number=serial
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                errors["serial_number"] = "This serial is already used at this site."
+
+        if (
+            len(normalized_macs) == 2
+            and normalized_macs["mac_address"] == normalized_macs["mac_address_2"]
+        ):
+            errors["mac_address_2"] = "MAC 2 must be different from MAC 1."
+
+        if self.is_archived:
+            if errors:
+                raise ValidationError(errors)
+            return
+
+        for field_name, value in (
+            ("mac_address", self.mac_address),
+            ("mac_address_2", self.mac_address_2),
+        ):
+            if field_name not in normalized_macs:
+                continue
+            qs = Asset.objects.filter(is_archived=False).filter(
+                Q(mac_address=value) | Q(mac_address_2=value)
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                errors[field_name] = "This MAC address is already in use."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if not self.barcode_value:

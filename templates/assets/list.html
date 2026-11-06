@@ -47,7 +47,7 @@
       <thead>
         <tr>
           {% if user.can_manage_assets and not show_archived %}<th><input type="checkbox" class="select-all"></th>{% endif %}
-          <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Actions</th>
+          <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>MAC</th><th>MAC 2</th><th>Model</th><th>Location</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -64,6 +64,8 @@
             <a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a>
           </td>
           <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.mac_address|default:"—" }}</td>
+          <td>{{ asset.mac_address_2|default:"—" }}</td>
           <td>{{ asset.model_number|default:"—" }}</td>
           <td>{{ asset.location|default:"—" }}</td>
           <td class="no-print">
@@ -73,7 +75,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" style="text-align:center;color:var(--text-muted)">No assets found.</td></tr>
+        <tr><td colspan="11" style="text-align:center;color:var(--text-muted)">No assets found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -24,6 +24,7 @@ staticfiles/
 .vscode/
 *.swp
 *.swo
+/.superpowers/
 
 # OS
 .DS_Store

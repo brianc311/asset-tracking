@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Start Batch Scan — {{ branding.site_name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Start Batch Scan</h1>
+<p class="page-subtitle">Choose the site and product type for this batch.</p>
+
+<div class="card" style="max-width:480px">
+  <form method="post" action="{% url 'scan:batch_start' %}">
+    {% csrf_token %}
+    {% include "assets/site_name_fields.html" %}
+    <div class="field-row">
+      {% include "assets/product_type_fields.html" %}
+    </div>
+    <div class="toolbar" style="margin-top:1.25rem">
+      <button type="submit" class="btn btn-primary">Start Batch</button>
+      <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/site-name-select.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const select = document.querySelector('.product-name-select');
+  const wrap = document.querySelector('.new-product-name-wrap');
+  if (!select || !wrap) return;
+  const sync = () => {
+    wrap.hidden = select.value !== '__new__';
+  };
+  select.addEventListener('change', sync);
+  sync();
+});
+</script>
+{% endblock %}

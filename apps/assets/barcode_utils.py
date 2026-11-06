@@ -1,9 +1,11 @@
+import base64
 import io
 
 import barcode
 import qrcode
 from barcode.writer import ImageWriter
 from django.http import HttpResponse
+from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -33,7 +35,7 @@ def generate_1d_barcode_image(barcode_value: str, barcode_type: str = "code128")
         code_class = barcode.ean.EuropeanArticleNumber13
         value = barcode_value.zfill(12)[:12]
     else:
-        code_class = barcode.code128.Code128
+        code_class = barcode.Code128
         value = barcode_value
 
     code = code_class(value, writer=writer)
@@ -41,6 +43,18 @@ def generate_1d_barcode_image(barcode_value: str, barcode_type: str = "code128")
     code.write(buffer)
     buffer.seek(0)
     return buffer
+
+
+def barcode_png_for_value(value: str) -> bytes:
+    return generate_1d_barcode_image(value, "code128").getvalue()
+
+
+def barcode_data_uri(value: str) -> str:
+    try:
+        png = barcode_png_for_value(value)
+        return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+    except Exception:
+        return ""
 
 
 def barcode_image_response(asset: Asset) -> HttpResponse:
@@ -107,4 +121,55 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
 def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
     response = HttpResponse(assets_pdf_bytes(assets, title=title), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{title.replace(" ", "_").lower()}.pdf"'
+    return response
+
+
+def batch_report_pdf_response(assets, *, site_name: str, product_name: str) -> HttpResponse:
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=0.35 * inch,
+        rightMargin=0.35 * inch,
+        topMargin=0.5 * inch,
+        bottomMargin=0.5 * inch,
+    )
+    styles = getSampleStyleSheet()
+    elements = [
+        Paragraph(f"Batch Report — {site_name} — {product_name}", styles["Heading1"]),
+        Spacer(1, 0.2 * inch),
+    ]
+    data = [["Site", "Type", "Serial", "MAC 1", "MAC 2", "Timestamp"]]
+    for asset in assets:
+        created_at = timezone.localtime(asset.created_at).strftime("%Y-%m-%d %H:%M:%S")
+        data.append(
+            [
+                asset.site_name or "—",
+                asset.product_name or "—",
+                asset.serial_number or "—",
+                asset.mac_address or "—",
+                asset.mac_address_2 or "—",
+                created_at,
+            ]
+        )
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#6366f1")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    elements.extend([table, Spacer(1, 0.3 * inch), Paragraph(f"Total items: {len(data) - 1}", styles["Normal"])])
+    doc.build(elements)
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="batch_report.pdf"'
     return response
