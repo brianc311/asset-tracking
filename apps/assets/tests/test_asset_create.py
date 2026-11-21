@@ -38,3 +38,21 @@ class AssetCreateStayTests(TestCase):
         self.assertContains(response, "Room1")
         self.assertNotContains(response, 'value="444444"')
         self.assertNotContains(response, "1A:23:7G:4E:12:9A")
+
+
+class AssetDeviceNameTests(TestCase):
+    def test_device_name_defaults_blank(self):
+        asset = Asset.objects.create(
+            product_name="Switches",
+            barcode_value="AT-DEVNAME01",
+        )
+        self.assertEqual(asset.device_name, "")
+
+    def test_device_name_persists(self):
+        asset = Asset.objects.create(
+            product_name="Switches",
+            barcode_value="AT-DEVNAME02",
+            device_name="EPS-Switch-01",
+        )
+        asset.refresh_from_db()
+        self.assertEqual(asset.device_name, "EPS-Switch-01")

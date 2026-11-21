@@ -31,6 +31,7 @@ class Asset(models.Model):
     )
 
     product_name = models.CharField(max_length=255)
+    device_name = models.CharField(max_length=128, blank=True)
     serial_number = models.CharField(max_length=128, blank=True)
     mac_address = models.CharField(max_length=17, blank=True, db_index=True)
     mac_address_2 = models.CharField(max_length=17, blank=True, db_index=True)
