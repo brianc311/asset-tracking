@@ -1,7 +1,7 @@
 from django import forms
 
 from apps.assets.forms import ASSET_FIELD_ORDER
-from apps.assets.mac import MAC_ERROR, normalize_mac
+from apps.assets.mac import normalize_mac
 from apps.assets.models import Asset
 from apps.assets.product_types import apply_product_type_fields, resolve_product_name
 from apps.assets.site_names import apply_site_name_choices, apply_site_name_fields, resolve_site_name
@@ -53,16 +53,24 @@ class BatchItemForm(forms.Form):
         ),
     )
     mac_address = forms.CharField(
-        max_length=17,
+        max_length=32,
         widget=forms.TextInput(
-            attrs={"class": "form-input", "id": "id_mac_address", "placeholder": "MAC address"}
+            attrs={
+                "class": "form-input",
+                "id": "id_mac_address",
+                "placeholder": "AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF",
+            }
         ),
     )
     mac_address_2 = forms.CharField(
         required=False,
-        max_length=17,
+        max_length=32,
         widget=forms.TextInput(
-            attrs={"class": "form-input", "id": "id_mac_address_2", "placeholder": "Second MAC"}
+            attrs={
+                "class": "form-input",
+                "id": "id_mac_address_2",
+                "placeholder": "Second MAC",
+            }
         ),
     )
     skip_mac_2 = forms.BooleanField(required=False, label="Skip 2nd MAC")
@@ -70,8 +78,8 @@ class BatchItemForm(forms.Form):
     def _clean_mac(self, raw):
         try:
             return normalize_mac(raw)
-        except ValueError:
-            raise forms.ValidationError(MAC_ERROR)
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
 
     def clean_mac_address(self):
         return self._clean_mac(self.cleaned_data.get("mac_address", ""))

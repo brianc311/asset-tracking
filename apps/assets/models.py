@@ -79,7 +79,7 @@ class Asset(models.Model):
         from django.core.exceptions import ValidationError
         from django.db.models import Q
 
-        from apps.assets.mac import MAC_ERROR, normalize_mac
+        from apps.assets.mac import normalize_mac
 
         super().clean()
         errors = {}
@@ -93,8 +93,8 @@ class Asset(models.Model):
                 continue
             try:
                 normalized_value = normalize_mac(value)
-            except ValueError:
-                errors[field_name] = MAC_ERROR
+            except ValueError as exc:
+                errors[field_name] = str(exc)
                 continue
             setattr(self, field_name, normalized_value)
             normalized_macs[field_name] = normalized_value

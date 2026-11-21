@@ -1,5 +1,6 @@
 from django import forms
 
+from apps.assets.mac import normalize_mac
 from apps.assets.models import Asset
 from apps.assets.site_names import apply_site_name_fields, resolve_site_name
 
@@ -43,8 +44,12 @@ class AssetForm(forms.ModelForm):
             ),
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Product name"}),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
-            "mac_address": forms.TextInput(attrs={"class": "form-input"}),
-            "mac_address_2": forms.TextInput(attrs={"class": "form-input"}),
+            "mac_address": forms.TextInput(
+                attrs={"class": "form-input", "placeholder": "AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF"}
+            ),
+            "mac_address_2": forms.TextInput(
+                attrs={"class": "form-input", "placeholder": "Optional second MAC"}
+            ),
             "model_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Model number"}),
             "location": forms.TextInput(attrs={"class": "form-input", "placeholder": "Room, shelf, or specific spot"}),
             "comments": forms.Textarea(attrs={"class": "form-input", "rows": 3, "placeholder": "Comments"}),
@@ -65,12 +70,31 @@ class AssetForm(forms.ModelForm):
         self.fields["barcode_value"].required = False
         self.fields["asset_number"].required = False
         self.fields["asset_number"].help_text = "Leave blank to auto-assign the next number."
+        self.fields["mac_address"].required = False
+        self.fields["mac_address"].max_length = 32
+        self.fields["mac_address_2"].required = False
+        self.fields["mac_address_2"].max_length = 32
         self.order_fields(ASSET_FIELD_ORDER)
+
+    def _clean_mac_value(self, raw):
+        value = (raw or "").strip()
+        if not value:
+            return ""
+        try:
+            return normalize_mac(value)
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
 
     def clean(self):
         cleaned_data = super().clean()
         resolve_site_name(cleaned_data, default_site_name=self.default_site_name, errors_form=self)
         return cleaned_data
+
+    def clean_mac_address(self):
+        return self._clean_mac_value(self.cleaned_data.get("mac_address"))
+
+    def clean_mac_address_2(self):
+        return self._clean_mac_value(self.cleaned_data.get("mac_address_2"))
 
     def clean_asset_number(self):
         value = self.cleaned_data.get("asset_number")

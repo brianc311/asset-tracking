@@ -7,8 +7,10 @@ class NormalizeMacTests(SimpleTestCase):
     def test_colon_form(self):
         self.assertEqual(normalize_mac("aa:bb:cc:dd:ee:ff"), "AA:BB:CC:DD:EE:FF")
 
-    def test_hyphen_and_bare_hex(self):
+    def test_hyphen_dots_spaces_and_bare_hex(self):
         self.assertEqual(normalize_mac("aa-bb-cc-dd-ee-ff"), "AA:BB:CC:DD:EE:FF")
+        self.assertEqual(normalize_mac("aabb.ccddee.ff"), "AA:BB:CC:DD:EE:FF")
+        self.assertEqual(normalize_mac("aa bb cc dd ee ff"), "AA:BB:CC:DD:EE:FF")
         self.assertEqual(normalize_mac("aabbccddeeff"), "AA:BB:CC:DD:EE:FF")
 
     def test_rejects_invalid(self):
@@ -16,3 +18,7 @@ class NormalizeMacTests(SimpleTestCase):
             normalize_mac("not-a-mac")
         with self.assertRaisesMessage(ValueError, MAC_ERROR):
             normalize_mac("")
+
+    def test_rejects_non_hex_letters(self):
+        with self.assertRaisesMessage(ValueError, "Invalid character(s): G"):
+            normalize_mac("1A237G4E129A")
