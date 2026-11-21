@@ -22,7 +22,7 @@ from apps.assets.report_columns import (
 
 
 def generate_qr_image(barcode_value: str, box_size: int = 10) -> io.BytesIO:
-    qr = qrcode.QRCode(version=1, box_size=box_size, border=2)
+    qr = qrcode.QRCode(version=None, box_size=box_size, border=2)
     qr.add_data(barcode_value)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
@@ -63,16 +63,16 @@ def barcode_data_uri(value: str) -> str:
         return ""
 
 
-def barcode_image_response(asset: Asset) -> HttpResponse:
-    if asset.barcode_type == Asset.BarcodeType.QR:
-        buffer = generate_qr_image(asset.barcode_value)
-        content_type = "image/png"
+def barcode_image_response(asset: Asset, *, data: str | None = None, as_qr: bool = False) -> HttpResponse:
+    payload = asset.barcode_value if data is None else data
+    if as_qr or asset.barcode_type == Asset.BarcodeType.QR:
+        buffer = generate_qr_image(payload)
     else:
-        buffer = generate_1d_barcode_image(asset.barcode_value, asset.barcode_type)
-        content_type = "image/png"
+        buffer = generate_1d_barcode_image(payload, asset.barcode_type)
 
-    response = HttpResponse(buffer.getvalue(), content_type=content_type)
-    response["Content-Disposition"] = f'inline; filename="{asset.barcode_value}.png"'
+    filename = f"{asset.barcode_value}-scan.png" if as_qr else f"{asset.barcode_value}.png"
+    response = HttpResponse(buffer.getvalue(), content_type="image/png")
+    response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
 
 

@@ -154,6 +154,8 @@ def asset_edit(request, pk):
 @login_required
 def asset_barcode(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    if request.GET.get("kind") == "scan":
+        return barcode_image_response(asset, data=asset.get_scan_url(request), as_qr=True)
     return barcode_image_response(asset)
 
 

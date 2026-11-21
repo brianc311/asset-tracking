@@ -24,12 +24,50 @@
     <p style="font-size:0.875rem;color:var(--text-muted)">Added {{ asset.created_at|date:"M j, Y g:i A" }}{% if asset.created_by %} by {{ asset.created_by.username }}{% endif %}</p>
   </div>
   <div class="card" style="text-align:center">
-    <img src="{% url 'assets:barcode' asset.pk %}" alt="Barcode" style="max-width:100%;border-radius:8px">
-    <p style="margin-top:0.75rem;font-size:0.875rem"><a href="{{ scan_url }}">Open scan registration page</a></p>
+    <div class="toolbar no-print" style="justify-content:center;margin-bottom:0.75rem">
+      <button type="button" class="btn btn-primary" id="qr-mode-asset" aria-pressed="true">Asset QR</button>
+      <button type="button" class="btn btn-secondary" id="qr-mode-web" aria-pressed="false">Website QR</button>
+    </div>
+    <img id="asset-qr-image"
+         src="{% url 'assets:barcode' asset.pk %}"
+         data-asset-src="{% url 'assets:barcode' asset.pk %}"
+         data-web-src="{% url 'assets:barcode' asset.pk %}?kind=scan"
+         alt="Asset QR"
+         style="max-width:100%;border-radius:8px">
+    <p id="qr-caption-asset" style="margin-top:0.75rem;font-size:0.875rem">Encodes <code>{{ asset.barcode_value }}</code></p>
+    <p id="qr-caption-web" style="margin-top:0.75rem;font-size:0.875rem;display:none">Phone camera opens the scan page</p>
+    <p style="margin-top:0.5rem;font-size:0.875rem"><a href="{{ scan_url }}">Open scan registration page</a></p>
     {% if asset.photo %}
     <hr style="border-color:var(--border);margin:1rem 0">
     <img src="{{ asset.photo.url }}" alt="Asset photo" style="max-width:100%;border-radius:8px">
     {% endif %}
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var img = document.getElementById("asset-qr-image");
+  var assetBtn = document.getElementById("qr-mode-asset");
+  var webBtn = document.getElementById("qr-mode-web");
+  var assetCaption = document.getElementById("qr-caption-asset");
+  var webCaption = document.getElementById("qr-caption-web");
+  if (!img || !assetBtn || !webBtn) {
+    return;
+  }
+  function setMode(mode) {
+    var isWeb = mode === "web";
+    img.src = isWeb ? img.getAttribute("data-web-src") : img.getAttribute("data-asset-src");
+    img.alt = isWeb ? "Website QR" : "Asset QR";
+    assetCaption.style.display = isWeb ? "none" : "";
+    webCaption.style.display = isWeb ? "" : "none";
+    assetBtn.className = isWeb ? "btn btn-secondary" : "btn btn-primary";
+    webBtn.className = isWeb ? "btn btn-primary" : "btn btn-secondary";
+    assetBtn.setAttribute("aria-pressed", isWeb ? "false" : "true");
+    webBtn.setAttribute("aria-pressed", isWeb ? "true" : "false");
+  }
+  assetBtn.addEventListener("click", function () { setMode("asset"); });
+  webBtn.addEventListener("click", function () { setMode("web"); });
+})();
+</script>
 {% endblock %}
