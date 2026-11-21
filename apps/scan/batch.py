@@ -16,6 +16,22 @@ from apps.scan.forms import BatchItemForm, StartBatchForm
 
 BATCH_KEY = "batch_session_key"
 BATCH_META = "batch_sessions_meta"
+MODE_QUICK = "quick"
+MODE_FULL = "full"
+
+
+def normalize_batch_mode(raw) -> str:
+    return MODE_FULL if (raw or "").strip().lower() == MODE_FULL else MODE_QUICK
+
+
+def _update_batch_meta(request, key, **fields):
+    all_meta = dict(request.session.get(BATCH_META, {}))
+    current = dict(all_meta.get(key) or {})
+    current.update(fields)
+    all_meta[key] = current
+    request.session[BATCH_META] = all_meta
+    request.session.modified = True
+    return current
 
 
 def asset_manager_required(view_func):
@@ -69,6 +85,9 @@ def batch_start(request):
             "site_name": form.cleaned_data["site_name"],
             "product_name": form.cleaned_data["product_name"],
             "started_at": timezone.now().isoformat(),
+            "mode": MODE_QUICK,
+            "last_model_number": "",
+            "last_location": "",
         }
         request.session[BATCH_META] = meta
         request.session.modified = True
@@ -82,6 +101,10 @@ def batch_home(request):
     key, meta, site, product = require_active_batch(request)
     if not site:
         return redirect("scan:batch_start")
+    requested = (request.GET.get("mode") or "").strip().lower()
+    if requested in (MODE_QUICK, MODE_FULL):
+        _update_batch_meta(request, key, mode=requested)
+        return redirect("scan:batch_home")
     started = meta.get("started_at")
     started_display = ""
     if started:

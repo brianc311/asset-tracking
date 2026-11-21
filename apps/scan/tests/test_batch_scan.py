@@ -82,6 +82,36 @@ class BatchViewTests(TestCase):
         self.assertRedirects(end_response, dashboard_url)
 
 
+class BatchModeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def _meta(self):
+        session = self.client.session
+        key = session["batch_session_key"]
+        return session["batch_sessions_meta"][key]
+
+    def test_new_batch_defaults_to_quick(self):
+        self.assertEqual(self._meta().get("mode", "quick"), "quick")
+
+    def test_mode_query_persists_on_refresh(self):
+        response = self.client.get("/scan/batch/", {"mode": "full"})
+        self.assertRedirects(response, "/scan/batch/")
+        self.assertEqual(self._meta()["mode"], "full")
+        self.client.get("/scan/batch/")
+        self.assertEqual(self._meta()["mode"], "full")
+
+    def test_invalid_mode_query_is_ignored(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.get("/scan/batch/", {"mode": "nope"})
+        self.assertEqual(self._meta()["mode"], "full")
+
+
 class BatchSaveTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
