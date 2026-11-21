@@ -135,12 +135,21 @@ def batch_save(request):
 
     form = BatchItemForm(request.POST)
     if form.is_valid():
+        mode = normalize_batch_mode(meta.get("mode"))
+        if mode == MODE_FULL:
+            model_number = (form.cleaned_data.get("model_number") or "").strip()
+            location = (form.cleaned_data.get("location") or "").strip()
+        else:
+            model_number = ""
+            location = ""
         asset = Asset(
             site_name=site,
             product_name=product,
             serial_number=form.cleaned_data["serial_number"].strip(),
             mac_address=form.cleaned_data["mac_address"],
             mac_address_2=form.cleaned_data["mac_address_2"],
+            model_number=model_number,
+            location=location,
             barcode_value=Asset.generate_barcode_value(),
             created_by=request.user,
             updated_by=request.user,
@@ -161,6 +170,13 @@ def batch_save(request):
             ids.append(asset.pk)
             request.session[key] = ids
             request.session.modified = True
+            if mode == MODE_FULL:
+                _update_batch_meta(
+                    request,
+                    key,
+                    last_model_number=model_number,
+                    last_location=location,
+                )
             return redirect("scan:batch_home")
 
     started = meta.get("started_at")

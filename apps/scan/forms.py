@@ -74,6 +74,20 @@ class BatchItemForm(forms.Form):
         ),
     )
     skip_mac_2 = forms.BooleanField(required=False, label="Skip 2nd MAC")
+    model_number = forms.CharField(
+        required=False,
+        max_length=128,
+        widget=forms.TextInput(
+            attrs={"class": "form-input", "id": "id_model_number", "placeholder": "Model number"}
+        ),
+    )
+    location = forms.CharField(
+        required=False,
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"class": "form-input", "id": "id_location", "placeholder": "Room, shelf, or specific spot"}
+        ),
+    )
 
     def _clean_mac(self, raw):
         try:

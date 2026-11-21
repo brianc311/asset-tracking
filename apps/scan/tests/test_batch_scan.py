@@ -204,6 +204,67 @@ class BatchSaveTests(TestCase):
         self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
 
 
+class BatchFullSaveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def _meta(self):
+        session = self.client.session
+        key = session["batch_session_key"]
+        return session["batch_sessions_meta"][key]
+
+    def test_full_save_stores_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-FULL")
+        self.assertEqual(asset.model_number, "SP4628")
+        self.assertEqual(asset.location, "Room1")
+        self.assertEqual(self._meta()["last_model_number"], "SP4628")
+        self.assertEqual(self._meta()["last_location"], "Room1")
+
+    def test_quick_save_ignores_posted_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        self.client.get("/scan/batch/", {"mode": "quick"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-QUICK",
+                "mac_address": "aa:bb:cc:dd:ee:22",
+                "model_number": "SHOULD-IGNORE",
+                "location": "SHOULD-IGNORE",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-QUICK")
+        self.assertEqual(asset.model_number, "")
+        self.assertEqual(asset.location, "")
+        self.assertEqual(self._meta()["last_model_number"], "SP4628")
+        self.assertEqual(self._meta()["last_location"], "Room1")
+
+
 class BatchArchiveTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
