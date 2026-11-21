@@ -264,6 +264,24 @@ class BatchFullSaveTests(TestCase):
         self.assertEqual(self._meta()["last_model_number"], "SP4628")
         self.assertEqual(self._meta()["last_location"], "Room1")
 
+    def test_stale_full_form_is_rejected_when_session_mode_is_quick(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "batch_mode": "full",
+                "serial_number": "SN-STALE",
+                "mac_address": "aa:bb:cc:dd:ee:44",
+                "model_number": "SP4628",
+                "location": "Room3",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Asset.objects.filter(serial_number="SN-STALE").exists())
+        self.assertContains(response, "Batch mode changed. Choose Quick or Full again, then save.")
+        self.assertContains(response, 'value="SP4628"')
+        self.assertContains(response, 'value="Room3"')
+
 
 class BatchFullUiTests(TestCase):
     def setUp(self):
@@ -325,6 +343,31 @@ class BatchFullUiTests(TestCase):
         self.assertContains(response, "This serial number is already in the database.")
         self.assertContains(response, 'value="SP4628"')
         self.assertContains(response, 'value="Room2"')
+
+    def test_failed_save_mode_links_target_batch_home(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN-DUP",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST-LINKS",
+        )
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "batch_mode": "full",
+                "serial_number": "SN-DUP",
+                "mac_address": "aa:bb:cc:dd:ee:33",
+                "model_number": "SP4628",
+                "location": "Room2",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/scan/batch/?mode=quick"')
+        self.assertContains(response, 'href="/scan/batch/?mode=full"')
+        self.assertNotContains(response, "/scan/batch/save/?mode=")
 
 
 class BatchArchiveTests(TestCase):

@@ -153,8 +153,14 @@ def batch_save(request):
         return redirect("scan:batch_start")
 
     form = BatchItemForm(request.POST)
+    mode = normalize_batch_mode(meta.get("mode"))
+    posted_mode = (request.POST.get("batch_mode") or "").strip().lower()
+    if posted_mode in (MODE_QUICK, MODE_FULL) and posted_mode != mode:
+        form.add_error(None, "Batch mode changed. Choose Quick or Full again, then save.")
+        rendered_meta = {**meta, "mode": posted_mode}
+        return _render_batch_home(request, key, rendered_meta, site, product, form, status=200)
+
     if form.is_valid():
-        mode = normalize_batch_mode(meta.get("mode"))
         if mode == MODE_FULL:
             model_number = (form.cleaned_data.get("model_number") or "").strip()
             location = (form.cleaned_data.get("location") or "").strip()

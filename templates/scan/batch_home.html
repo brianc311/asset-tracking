@@ -11,11 +11,12 @@
 
 <div class="card" style="max-width:640px">
   <div class="toolbar" style="margin-bottom:1rem">
-    <a href="?mode=quick" class="btn {% if batch_mode != 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Quick</a>
-    <a href="?mode=full" class="btn {% if batch_mode == 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Full</a>
+    <a href="{% url 'scan:batch_home' %}?mode=quick" class="btn {% if batch_mode != 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Quick</a>
+    <a href="{% url 'scan:batch_home' %}?mode=full" class="btn {% if batch_mode == 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Full</a>
   </div>
   <form method="post" action="{% url 'scan:batch_save' %}">
     {% csrf_token %}
+    <input type="hidden" name="batch_mode" value="{{ batch_mode }}">
     {% if form.non_field_errors %}<p class="form-error" style="color:var(--danger)">{{ form.non_field_errors.0 }}</p>{% endif %}
     <div class="field-row">
       <label class="form-label" for="{{ form.serial_number.id_for_label }}">{{ form.serial_number.label }}</label>
