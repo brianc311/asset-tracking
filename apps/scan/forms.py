@@ -58,7 +58,7 @@ class BatchItemForm(forms.Form):
             attrs={
                 "class": "form-input",
                 "id": "id_mac_address",
-                "placeholder": "AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF",
+                "placeholder": "1A-23-7G-4E-12-9A or AA:BB:CC:DD:EE:FF",
             }
         ),
     )

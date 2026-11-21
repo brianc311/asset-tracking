@@ -45,7 +45,7 @@ class AssetForm(forms.ModelForm):
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Product name"}),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
             "mac_address": forms.TextInput(
-                attrs={"class": "form-input", "placeholder": "AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF"}
+                attrs={"class": "form-input", "placeholder": "1A-23-7G-4E-12-9A or AA:BB:CC:DD:EE:FF"}
             ),
             "mac_address_2": forms.TextInput(
                 attrs={"class": "form-input", "placeholder": "Optional second MAC"}

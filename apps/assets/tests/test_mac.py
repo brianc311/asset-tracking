@@ -19,6 +19,9 @@ class NormalizeMacTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, MAC_ERROR):
             normalize_mac("")
 
-    def test_rejects_non_hex_letters(self):
-        with self.assertRaisesMessage(ValueError, "Invalid character(s): G"):
-            normalize_mac("1A237G4E129A")
+    def test_accepts_letters_beyond_hex(self):
+        self.assertEqual(normalize_mac("1A-23-7G-4E-12-9A"), "1A:23:7G:4E:12:9A")
+
+    def test_rejects_symbols(self):
+        with self.assertRaisesMessage(ValueError, "Invalid character(s): !"):
+            normalize_mac("1A237C4E129!")
