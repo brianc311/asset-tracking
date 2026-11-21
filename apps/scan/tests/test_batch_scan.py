@@ -34,17 +34,16 @@ class BatchFormTests(TestCase):
         self.assertEqual(form.cleaned_data["mac_address"], "AA:BB:CC:DD:EE:01")
         self.assertEqual(form.cleaned_data["mac_address_2"], "")
 
-    def test_mac_2_required_when_not_skipped(self):
+    def test_blank_mac_2_is_valid_without_skip(self):
         form = BatchItemForm(
             data={
                 "serial_number": "SN1",
                 "mac_address": "aa:bb:cc:dd:ee:01",
                 "mac_address_2": "",
-                "skip_mac_2": "",
             }
         )
-        self.assertFalse(form.is_valid())
-        self.assertIn("mac_address_2", form.errors)
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data["mac_address_2"], "")
 
 
 class BatchViewTests(TestCase):
@@ -105,12 +104,22 @@ class BatchSaveTests(TestCase):
         self.assertEqual(asset.product_name, "AP")
         self.assertIsNotNone(asset.created_at)
 
-    def test_missing_mac_2_rejected(self):
-        self.client.post(
+    def test_blank_mac_2_saves_without_skip(self):
+        response = self.client.post(
             "/scan/batch/save/",
-            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "mac_address_2": ""},
+            {
+                "serial_number": "4444441",
+                "mac_address": "1A:23:7G:4E:12:90",
+                "mac_address_2": "",
+            },
         )
-        self.assertFalse(Asset.objects.filter(serial_number="SN1").exists())
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="4444441")
+        self.assertEqual(asset.mac_address, "1A:23:7G:4E:12:90")
+        self.assertEqual(asset.mac_address_2, "")
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, "4444441")
+        self.assertContains(home, "1A:23:7G:4E:12:90")
 
     def test_duplicate_serial_same_site_rejected(self):
         Asset.objects.create(

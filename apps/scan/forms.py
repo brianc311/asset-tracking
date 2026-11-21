@@ -92,10 +92,8 @@ class BatchItemForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("skip_mac_2"):
+        if cleaned.get("skip_mac_2") or not cleaned.get("mac_address_2"):
             cleaned["mac_address_2"] = ""
-        elif not cleaned.get("mac_address_2"):
-            self.add_error("mac_address_2", "Enter the second MAC or check Skip 2nd MAC.")
         return cleaned
 
 
