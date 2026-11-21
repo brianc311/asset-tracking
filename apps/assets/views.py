@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.assets.barcode_utils import assets_pdf_response, barcode_image_response
+from apps.assets.barcode_utils import assets_have_second_mac, assets_pdf_response, barcode_image_response
 from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
 from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
 from apps.assets.models import Asset
@@ -207,6 +207,7 @@ def site_report_view(request):
             "site_name": site_name,
             "title": title,
             "total": assets.count(),
+            "show_mac_2": assets_have_second_mac(assets),
             "email_configured": email_is_configured(),
         },
     )
@@ -243,7 +244,12 @@ def print_report(request):
     return render(
         request,
         "assets/print_report.html",
-        {"assets": assets, "title": title, "total": assets.count()},
+        {
+            "assets": assets,
+            "title": title,
+            "total": assets.count(),
+            "show_mac_2": assets_have_second_mac(assets),
+        },
     )
 
 

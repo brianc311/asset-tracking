@@ -16,7 +16,11 @@
   <div class="table-wrap">
     <table class="data-table">
       <thead>
-        <tr><th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Comments</th></tr>
+        <tr>
+          <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>MAC</th>
+          {% if show_mac_2 %}<th>MAC 2</th>{% endif %}
+          <th>Model</th><th>Location</th><th>Comments</th>
+        </tr>
       </thead>
       <tbody>
         {% for asset in assets %}
@@ -26,6 +30,8 @@
           <td>{{ asset.site_name|default:"—" }}</td>
           <td>{{ asset.product_name }}</td>
           <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.mac_address|default:"—" }}</td>
+          {% if show_mac_2 %}<td>{{ asset.mac_address_2|default:"—" }}</td>{% endif %}
           <td>{{ asset.model_number|default:"—" }}</td>
           <td>{{ asset.location|default:"—" }}</td>
           <td>{{ asset.comments|default:"—" }}</td>

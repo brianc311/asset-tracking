@@ -233,6 +233,7 @@ def batch_report(request):
             "product_name": product,
             "total": len(rows),
             "pdf_query": pdf_params.urlencode(),
+            "show_mac_2": any((row["asset"].mac_address_2 or "").strip() for row in rows),
         },
     )
 

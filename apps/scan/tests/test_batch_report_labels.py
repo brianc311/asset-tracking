@@ -29,9 +29,18 @@ class BatchReportTests(TestCase):
         self.assertContains(response, "SN1")
         self.assertContains(response, "AA:BB:CC:DD:EE:01")
         self.assertContains(response, "AA:BB:CC:DD:EE:02")
+        self.assertContains(response, "<th>MAC</th>")
+        self.assertContains(response, "<th>MAC 2</th>")
         self.assertContains(response, 'alt="SN1"')
         self.assertContains(response, 'alt="AA:BB:CC:DD:EE:01"')
         self.assertContains(response, 'alt="AA:BB:CC:DD:EE:02"')
+
+    def test_report_omits_mac_2_column_when_empty(self):
+        Asset.objects.filter(serial_number="SN1").update(mac_address_2="")
+        response = self.client.get("/scan/batch/report/")
+        self.assertContains(response, "<th>MAC</th>")
+        self.assertContains(response, "AA:BB:CC:DD:EE:01")
+        self.assertNotContains(response, "MAC 2")
 
     def test_report_without_ids_includes_all_matching_active_assets(self):
         Asset.objects.create(

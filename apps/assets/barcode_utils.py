@@ -70,6 +70,41 @@ def barcode_image_response(asset: Asset) -> HttpResponse:
     return response
 
 
+def assets_have_second_mac(assets) -> bool:
+    if hasattr(assets, "exclude"):
+        return assets.exclude(mac_address_2="").exists()
+    return any((getattr(asset, "mac_address_2", None) or "").strip() for asset in assets)
+
+
+def asset_report_table_data(assets):
+    show_mac_2 = assets_have_second_mac(assets)
+    headers = ["#", "Barcode", "Site", "Product", "Serial", "MAC"]
+    if show_mac_2:
+        headers.append("MAC 2")
+    headers.extend(["Model", "Location", "Comments"])
+    data = [headers]
+    for asset in assets:
+        row = [
+            str(asset.asset_number or "—"),
+            asset.barcode_value,
+            (asset.site_name[:20] or "—"),
+            asset.product_name[:30],
+            (asset.serial_number[:20] or "—"),
+            (asset.mac_address[:17] or "—"),
+        ]
+        if show_mac_2:
+            row.append(asset.mac_address_2[:17] or "—")
+        row.extend(
+            [
+                (asset.model_number[:20] or "—"),
+                (asset.location[:20] or "—"),
+                (asset.comments[:40] + "…") if len(asset.comments) > 40 else (asset.comments or "—"),
+            ]
+        )
+        data.append(row)
+    return data, show_mac_2
+
+
 def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch)
@@ -83,19 +118,7 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     )
 
     elements = [Paragraph(title, title_style), Spacer(1, 0.2 * inch)]
-
-    data = [["#", "Barcode", "Site", "Product", "Serial", "Model", "Location", "Comments"]]
-    for asset in assets:
-        data.append([
-            str(asset.asset_number or "—"),
-            asset.barcode_value,
-            asset.site_name[:20] or "—",
-            asset.product_name[:30],
-            asset.serial_number[:20] or "—",
-            asset.model_number[:20] or "—",
-            asset.location[:20] or "—",
-            (asset.comments[:40] + "…") if len(asset.comments) > 40 else (asset.comments or "—"),
-        ])
+    data, _show_mac_2 = asset_report_table_data(assets)
 
     table = Table(data, repeatRows=1)
     table.setStyle(
@@ -111,7 +134,7 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     )
     elements.append(table)
     elements.append(Spacer(1, 0.3 * inch))
-    elements.append(Paragraph(f"Total items: {len(assets)}", styles["Normal"]))
+    elements.append(Paragraph(f"Total items: {max(len(data) - 1, 0)}", styles["Normal"]))
 
     doc.build(elements)
     buffer.seek(0)
@@ -139,19 +162,24 @@ def batch_report_pdf_response(assets, *, site_name: str, product_name: str) -> H
         Paragraph(f"Batch Report — {site_name} — {product_name}", styles["Heading1"]),
         Spacer(1, 0.2 * inch),
     ]
-    data = [["Site", "Type", "Serial", "MAC 1", "MAC 2", "Timestamp"]]
+    show_mac_2 = assets_have_second_mac(assets)
+    headers = ["Site", "Type", "Serial", "MAC"]
+    if show_mac_2:
+        headers.append("MAC 2")
+    headers.append("Timestamp")
+    data = [headers]
     for asset in assets:
         created_at = timezone.localtime(asset.created_at).strftime("%Y-%m-%d %H:%M:%S")
-        data.append(
-            [
-                asset.site_name or "—",
-                asset.product_name or "—",
-                asset.serial_number or "—",
-                asset.mac_address or "—",
-                asset.mac_address_2 or "—",
-                created_at,
-            ]
-        )
+        row = [
+            asset.site_name or "—",
+            asset.product_name or "—",
+            asset.serial_number or "—",
+            asset.mac_address or "—",
+        ]
+        if show_mac_2:
+            row.append(asset.mac_address_2 or "—")
+        row.append(created_at)
+        data.append(row)
 
     table = Table(data, repeatRows=1)
     table.setStyle(
