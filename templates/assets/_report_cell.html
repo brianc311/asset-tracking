@@ -1,5 +1,5 @@
 {% if key == "number" %}{{ asset.asset_number|default:"—" }}
-{% elif key == "barcode" %}{{ asset.barcode_value }}
+{% elif key == "barcode" %}<code>{{ asset.barcode_value }}</code>
 {% elif key == "site" %}{{ asset.site_name|default:"—" }}
 {% elif key == "product" %}{{ asset.product_name }}
 {% elif key == "device_name" %}{{ asset.device_name|default:"—" }}

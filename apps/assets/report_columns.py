@@ -43,6 +43,8 @@ def visible_report_columns(column_keys, *, show_mac_2: bool) -> tuple[str, ...]:
     keys = tuple(column_keys or REPORT_COLUMN_KEYS)
     if not show_mac_2:
         keys = tuple(key for key in keys if key != "mac_2")
+    if not keys:
+        keys = tuple(key for key in REPORT_COLUMN_KEYS if show_mac_2 or key != "mac_2")
     return keys
 
 

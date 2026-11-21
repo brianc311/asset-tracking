@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 
-from apps.assets.barcode_utils import asset_report_table_data
+from apps.assets.barcode_utils import asset_report_table_data, assets_pdf_bytes
 from apps.assets.models import Asset
 from apps.assets.report_columns import (
     REPORT_COLUMN_KEYS,
@@ -28,6 +28,12 @@ class ParseReportColumnsTests(SimpleTestCase):
         keys = parse_report_columns("serial,mac,mac_2")
         self.assertEqual(visible_report_columns(keys, show_mac_2=False), ("serial", "mac"))
         self.assertEqual(visible_report_columns(keys, show_mac_2=True), ("serial", "mac", "mac_2"))
+
+    def test_mac_2_only_selection_falls_back_when_empty(self):
+        keys = visible_report_columns(("mac_2",), show_mac_2=False)
+
+        self.assertTrue(keys)
+        self.assertNotIn("mac_2", keys)
 
 
 class ReportColumnPickerTests(TestCase):
@@ -67,3 +73,12 @@ class ReportColumnPickerTests(TestCase):
         self.assertEqual(data[0], ["Device Name", "Serial"])
         self.assertEqual(data[1][0], "EPS-Switch-01")
         self.assertEqual(data[1][1], "444444")
+
+    def test_pdf_falls_back_when_only_selected_mac_2_is_empty(self):
+        pdf = assets_pdf_bytes(
+            Asset.objects.filter(pk=self.asset.pk),
+            title="Asset Report",
+            column_keys=("mac_2",),
+        )
+
+        self.assertTrue(pdf.startswith(b"%PDF"))

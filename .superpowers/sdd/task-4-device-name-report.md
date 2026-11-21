@@ -53,3 +53,11 @@ Result: exit code 0; no issues identified (one existing check silenced).
 - Verified unknown or blank `cols` values default to all canonical columns.
 - Verified the unrelated untracked planning document was not included in this task.
 - No known concerns.
+
+## Important finding fix verification
+
+Command:
+
+`.\.venv\Scripts\python.exe manage.py test apps.assets.tests.test_report_columns apps.assets.tests.test_asset_reports -v 2`
+
+Result: PASS (exit code 0); 14 tests ran and passed.
