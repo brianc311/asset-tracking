@@ -68,6 +68,41 @@ def _session_assets(request, key):
     return Asset.objects.filter(pk__in=ids, is_archived=False).order_by("-created_at")
 
 
+def _batch_form(meta, data=None):
+    mode = normalize_batch_mode(meta.get("mode"))
+    if data is not None:
+        return BatchItemForm(data)
+    initial = {}
+    if mode == MODE_FULL:
+        initial = {
+            "model_number": meta.get("last_model_number") or "",
+            "location": meta.get("last_location") or "",
+        }
+    return BatchItemForm(initial=initial)
+
+
+def _render_batch_home(request, key, meta, site, product, form, status=200):
+    started = meta.get("started_at")
+    started_display = ""
+    if started:
+        parsed = parse_datetime(started)
+        if parsed:
+            started_display = timezone.localtime(parsed).strftime("%b %d, %Y %I:%M %p")
+    return render(
+        request,
+        "scan/batch_home.html",
+        {
+            "form": form,
+            "assets": _session_assets(request, key),
+            "site_name": site,
+            "product_name": product,
+            "started_at_display": started_display,
+            "batch_mode": normalize_batch_mode(meta.get("mode")),
+        },
+        status=status,
+    )
+
+
 @login_required
 @asset_manager_required
 def batch_start(request):
@@ -105,23 +140,7 @@ def batch_home(request):
     if requested in (MODE_QUICK, MODE_FULL):
         _update_batch_meta(request, key, mode=requested)
         return redirect("scan:batch_home")
-    started = meta.get("started_at")
-    started_display = ""
-    if started:
-        parsed = parse_datetime(started)
-        if parsed:
-            started_display = timezone.localtime(parsed).strftime("%b %d, %Y %I:%M %p")
-    return render(
-        request,
-        "scan/batch_home.html",
-        {
-            "form": BatchItemForm(),
-            "assets": _session_assets(request, key),
-            "site_name": site,
-            "product_name": product,
-            "started_at_display": started_display,
-        },
-    )
+    return _render_batch_home(request, key, meta, site, product, _batch_form(meta))
 
 
 @login_required
@@ -179,24 +198,7 @@ def batch_save(request):
                 )
             return redirect("scan:batch_home")
 
-    started = meta.get("started_at")
-    started_display = ""
-    if started:
-        parsed = parse_datetime(started)
-        if parsed:
-            started_display = timezone.localtime(parsed).strftime("%b %d, %Y %I:%M %p")
-    return render(
-        request,
-        "scan/batch_home.html",
-        {
-            "form": form,
-            "assets": _session_assets(request, key),
-            "site_name": site,
-            "product_name": product,
-            "started_at_display": started_display,
-        },
-        status=200,
-    )
+    return _render_batch_home(request, key, meta, site, product, form, status=200)
 
 
 @login_required

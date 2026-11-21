@@ -265,6 +265,68 @@ class BatchFullSaveTests(TestCase):
         self.assertEqual(self._meta()["last_location"], "Room1")
 
 
+class BatchFullUiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_quick_hides_model_and_location_fields(self):
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, ">Quick</a>")
+        self.assertContains(home, ">Full</a>")
+        self.assertNotContains(home, 'id="id_model_number"')
+        self.assertNotContains(home, 'id="id_location"')
+
+    def test_full_shows_model_and_location_and_keeps_them_after_save(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, 'id="id_model_number"')
+        self.assertContains(home, 'value="SP4628"')
+        self.assertContains(home, 'value="Room1"')
+        self.assertNotContains(home, 'value="SN-FULL"')
+        self.assertNotContains(home, 'value="AA:BB:CC:DD:EE:11"')
+        self.assertContains(home, "<th>Model</th>")
+        self.assertContains(home, "<th>Location</th>")
+        self.assertContains(home, "SP4628")
+        self.assertContains(home, "Room1")
+
+    def test_failed_full_save_keeps_posted_model_and_location(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN-DUP",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST-FULL",
+        )
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-DUP",
+                "mac_address": "aa:bb:cc:dd:ee:33",
+                "model_number": "SP4628",
+                "location": "Room2",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This serial number is already in the database.")
+        self.assertContains(response, 'value="SP4628"')
+        self.assertContains(response, 'value="Room2"')
+
+
 class BatchArchiveTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
