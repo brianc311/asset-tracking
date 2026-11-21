@@ -72,12 +72,12 @@ def _batch_form(meta, data=None):
     mode = normalize_batch_mode(meta.get("mode"))
     if data is not None:
         return BatchItemForm(data)
-    initial = {}
+    initial = {
+        "device_name": meta.get("last_device_name") or "",
+    }
     if mode == MODE_FULL:
-        initial = {
-            "model_number": meta.get("last_model_number") or "",
-            "location": meta.get("last_location") or "",
-        }
+        initial["model_number"] = meta.get("last_model_number") or ""
+        initial["location"] = meta.get("last_location") or ""
     return BatchItemForm(initial=initial)
 
 
@@ -121,6 +121,7 @@ def batch_start(request):
             "product_name": form.cleaned_data["product_name"],
             "started_at": timezone.now().isoformat(),
             "mode": MODE_QUICK,
+            "last_device_name": "",
             "last_model_number": "",
             "last_location": "",
         }
@@ -167,12 +168,14 @@ def batch_save(request):
         else:
             model_number = ""
             location = ""
+        device_name = (form.cleaned_data.get("device_name") or "").strip()
         asset = Asset(
             site_name=site,
             product_name=product,
             serial_number=form.cleaned_data["serial_number"].strip(),
             mac_address=form.cleaned_data["mac_address"],
             mac_address_2=form.cleaned_data["mac_address_2"],
+            device_name=device_name,
             model_number=model_number,
             location=location,
             barcode_value=Asset.generate_barcode_value(),
@@ -195,13 +198,11 @@ def batch_save(request):
             ids.append(asset.pk)
             request.session[key] = ids
             request.session.modified = True
+            updates = {"last_device_name": device_name}
             if mode == MODE_FULL:
-                _update_batch_meta(
-                    request,
-                    key,
-                    last_model_number=model_number,
-                    last_location=location,
-                )
+                updates["last_model_number"] = model_number
+                updates["last_location"] = location
+            _update_batch_meta(request, key, **updates)
             return redirect("scan:batch_home")
 
     return _render_batch_home(request, key, meta, site, product, form, status=200)

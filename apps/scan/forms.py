@@ -74,6 +74,13 @@ class BatchItemForm(forms.Form):
         ),
     )
     skip_mac_2 = forms.BooleanField(required=False, label="Skip 2nd MAC")
+    device_name = forms.CharField(
+        required=False,
+        max_length=128,
+        widget=forms.TextInput(
+            attrs={"class": "form-input", "id": "id_device_name", "placeholder": "EPS-Switch-01"}
+        ),
+    )
     model_number = forms.CharField(
         required=False,
         max_length=128,

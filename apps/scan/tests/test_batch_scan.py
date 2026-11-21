@@ -370,6 +370,53 @@ class BatchFullUiTests(TestCase):
         self.assertNotContains(response, "/scan/batch/save/?mode=")
 
 
+class BatchDeviceNameTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_quick_save_stores_and_remembers_device_name(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-DEV",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "device_name": "EPS-AP-01",
+                "batch_mode": "quick",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-DEV")
+        self.assertEqual(asset.device_name, "EPS-AP-01")
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, 'id="id_device_name"')
+        self.assertContains(home, 'value="EPS-AP-01"')
+        self.assertContains(home, "<th>Device Name</th>")
+        self.assertNotContains(home, 'value="SN-DEV"')
+
+    def test_full_save_stores_device_name_with_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL-DEV",
+                "mac_address": "aa:bb:cc:dd:ee:22",
+                "device_name": "EPS-Switch-01",
+                "model_number": "SP4628",
+                "location": "Room1",
+                "batch_mode": "full",
+            },
+        )
+        asset = Asset.objects.get(serial_number="SN-FULL-DEV")
+        self.assertEqual(asset.device_name, "EPS-Switch-01")
+        self.assertEqual(asset.model_number, "SP4628")
+        self.assertEqual(asset.location, "Room1")
+
+
 class BatchArchiveTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
