@@ -2,7 +2,12 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from apps.assets.models import Asset
+from apps.assets.models import (
+    MAC_ALREADY_IN_DATABASE,
+    SERIAL_ALREADY_IN_DATABASE,
+    SERIAL_AND_MAC_ALREADY_IN_DATABASE,
+    Asset,
+)
 
 
 def make_asset(**kwargs):
@@ -56,20 +61,44 @@ class AssetMacUniquenessTests(TestCase):
             barcode_value="AT-DUP-SN",
             created_by=self.user,
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             asset.full_clean()
+        self.assertEqual(cm.exception.message_dict["serial_number"], [SERIAL_ALREADY_IN_DATABASE])
 
-    def test_same_serial_other_site_allowed(self):
+    def test_same_serial_other_site_rejected(self):
+        make_asset(serial_number="SN1", mac_address="AA:BB:CC:DD:EE:01")
+        asset = Asset(
+            product_name="AP",
+            site_name="SiteB",
+            serial_number="sn1",
+            mac_address="AA:BB:CC:DD:EE:02",
+            barcode_value="AT-OTHER-SITE",
+            created_by=self.user,
+        )
+        with self.assertRaises(ValidationError) as cm:
+            asset.full_clean()
+        self.assertEqual(cm.exception.message_dict["serial_number"], [SERIAL_ALREADY_IN_DATABASE])
+
+    def test_duplicate_serial_and_mac_combined_message(self):
         make_asset(serial_number="SN1", mac_address="AA:BB:CC:DD:EE:01")
         asset = Asset(
             product_name="AP",
             site_name="SiteB",
             serial_number="SN1",
-            mac_address="AA:BB:CC:DD:EE:02",
-            barcode_value="AT-OTHER-SITE",
+            mac_address="AA:BB:CC:DD:EE:01",
+            barcode_value="AT-DUP-BOTH",
             created_by=self.user,
         )
-        asset.full_clean()
+        with self.assertRaises(ValidationError) as cm:
+            asset.full_clean()
+        self.assertEqual(
+            cm.exception.message_dict["serial_number"],
+            [SERIAL_AND_MAC_ALREADY_IN_DATABASE],
+        )
+        self.assertEqual(
+            cm.exception.message_dict["mac_address"],
+            [SERIAL_AND_MAC_ALREADY_IN_DATABASE],
+        )
 
     def test_duplicate_mac_any_site_rejected(self):
         make_asset(
@@ -85,8 +114,9 @@ class AssetMacUniquenessTests(TestCase):
             barcode_value="AT-DUP-MAC",
             created_by=self.user,
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as cm:
             asset.full_clean()
+        self.assertEqual(cm.exception.message_dict["mac_address"], [MAC_ALREADY_IN_DATABASE])
 
     def test_duplicate_mac_in_different_format_rejected(self):
         make_asset(

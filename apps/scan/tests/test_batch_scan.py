@@ -125,7 +125,7 @@ class BatchSaveTests(TestCase):
             {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
         )
         self.assertEqual(Asset.objects.filter(serial_number="SN1").count(), 1)
-        self.assertContains(response, "already used", status_code=200)
+        self.assertContains(response, "This serial number is already in the database.", status_code=200)
 
     def test_duplicate_mac_rejected(self):
         Asset.objects.create(
@@ -140,7 +140,7 @@ class BatchSaveTests(TestCase):
             {"serial_number": "SN2", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
         )
         self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
-        self.assertContains(response, "already in use", status_code=200)
+        self.assertContains(response, "This MAC address is already in the database.", status_code=200)
 
     def test_model_errors_for_non_form_fields_become_non_field_errors(self):
         validation_error = ValidationError(
