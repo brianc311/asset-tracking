@@ -35,6 +35,7 @@ def asset_list(request):
     if q:
         filters = (
             Q(product_name__icontains=q)
+            | Q(device_name__icontains=q)
             | Q(barcode_value__icontains=q)
             | Q(serial_number__icontains=q)
             | Q(mac_address__icontains=q)

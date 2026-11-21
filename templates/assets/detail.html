@@ -12,6 +12,7 @@
   <div class="card">
     <h2 style="margin-top:0">#{{ asset.asset_number }} — {{ asset.product_name }}</h2>
     <p><strong>Barcode:</strong> <code>{{ asset.barcode_value }}</code> ({{ asset.get_barcode_type_display }})</p>
+    <p><strong>Device Name:</strong> {{ asset.device_name|default:"—" }}</p>
     <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
     <p><strong>MAC:</strong> {{ asset.mac_address|default:"—" }}</p>
     <p><strong>MAC 2:</strong> {{ asset.mac_address_2|default:"—" }}</p>

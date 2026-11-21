@@ -41,6 +41,10 @@ class AssetCreateStayTests(TestCase):
 
 
 class AssetDeviceNameTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+
     def test_device_name_defaults_blank(self):
         asset = Asset.objects.create(
             product_name="Switches",
@@ -56,3 +60,38 @@ class AssetDeviceNameTests(TestCase):
         )
         asset.refresh_from_db()
         self.assertEqual(asset.device_name, "EPS-Switch-01")
+
+    def test_create_saves_device_name(self):
+        response = self.client.post(
+            "/assets/new/",
+            {
+                "site_name": NEW_SITE_VALUE,
+                "new_site_name": "Test",
+                "product_name": "Switches",
+                "device_name": "EPS-Switch-01",
+                "serial_number": "444444",
+                "mac_address": "1A-23-7G-4E-12-9A",
+                "location": "Room1",
+                "barcode_type": "qr",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        asset = Asset.objects.get(serial_number="444444")
+        self.assertEqual(asset.device_name, "EPS-Switch-01")
+
+    def test_list_shows_and_searches_device_name(self):
+        Asset.objects.create(
+            site_name="Test",
+            product_name="Switches",
+            device_name="EPS-Switch-01",
+            serial_number="SN-LIST",
+            barcode_value="AT-DEVLIST01",
+        )
+        listed = self.client.get("/assets/")
+        self.assertContains(listed, "<th>Device Name</th>")
+        self.assertContains(listed, "EPS-Switch-01")
+        found = self.client.get("/assets/", {"q": "EPS-Switch-01"})
+        self.assertContains(found, "SN-LIST")
+        missed = self.client.get("/assets/", {"q": "no-such-name"})
+        self.assertNotContains(missed, "SN-LIST")

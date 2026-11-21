@@ -9,6 +9,7 @@ ASSET_FIELD_ORDER = [
     "new_site_name",
     "asset_number",
     "product_name",
+    "device_name",
     "serial_number",
     "mac_address",
     "mac_address_2",
@@ -28,6 +29,7 @@ class AssetForm(forms.ModelForm):
             "site_name",
             "asset_number",
             "product_name",
+            "device_name",
             "serial_number",
             "mac_address",
             "mac_address_2",
@@ -43,6 +45,9 @@ class AssetForm(forms.ModelForm):
                 attrs={"class": "form-input", "placeholder": "Leave blank to auto-assign"}
             ),
             "product_name": forms.TextInput(attrs={"class": "form-input", "placeholder": "Product name"}),
+            "device_name": forms.TextInput(
+                attrs={"class": "form-input", "placeholder": "EPS-Switch-01"}
+            ),
             "serial_number": forms.TextInput(attrs={"class": "form-input", "placeholder": "Serial number"}),
             "mac_address": forms.TextInput(
                 attrs={"class": "form-input", "placeholder": "1A-23-7G-4E-12-9A or AA:BB:CC:DD:EE:FF"}
@@ -68,6 +73,7 @@ class AssetForm(forms.ModelForm):
             default_site_name=default_site_name,
         )
         self.fields["barcode_value"].required = False
+        self.fields["device_name"].required = False
         self.fields["asset_number"].required = False
         self.fields["asset_number"].help_text = "Leave blank to auto-assign the next number."
         self.fields["mac_address"].required = False
