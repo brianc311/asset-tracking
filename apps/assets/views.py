@@ -66,10 +66,14 @@ def _active_scan_site_name(request):
     return (meta.get("site_name") or "").strip()
 
 
+CREATE_DEFAULTS_KEY = "asset_create_defaults"
+
+
 @_require_asset_access
 def asset_create(request):
     known_sites = get_known_site_names(request)
-    default_site = _active_scan_site_name(request)
+    defaults = request.session.get(CREATE_DEFAULTS_KEY) or {}
+    default_site = defaults.get("site_name") or _active_scan_site_name(request)
     if request.method == "POST":
         form = AssetForm(
             request.POST,
@@ -82,9 +86,30 @@ def asset_create(request):
             asset.created_by = request.user
             asset.updated_by = request.user
             asset.save()
-            return redirect("assets:detail", pk=asset.pk)
+            request.session[CREATE_DEFAULTS_KEY] = {
+                "site_name": asset.site_name,
+                "product_name": asset.product_name,
+                "model_number": asset.model_number,
+                "location": asset.location,
+                "barcode_type": asset.barcode_type,
+            }
+            label = asset.serial_number or f"#{asset.asset_number}"
+            messages.success(
+                request,
+                f"Saved {asset.product_name} ({label}). You can add another.",
+            )
+            return redirect("assets:create")
     else:
-        form = AssetForm(known_site_names=known_sites, default_site_name=default_site)
+        initial = {
+            key: value
+            for key, value in defaults.items()
+            if key != "site_name" and value
+        }
+        form = AssetForm(
+            known_site_names=known_sites,
+            default_site_name=default_site,
+            initial=initial,
+        )
     return render(
         request,
         "assets/form.html",

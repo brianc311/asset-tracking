@@ -22,8 +22,13 @@
       {% endif %}
     {% endfor %}
     <div class="toolbar" style="margin-top:1rem">
+      {% if action == "Create" %}
+      <button type="submit" class="btn btn-primary">Save and add another</button>
+      <a href="{% url 'assets:list' %}" class="btn btn-secondary">Done</a>
+      {% else %}
       <button type="submit" class="btn btn-primary">Save</button>
       <a href="{% url 'assets:list' %}" class="btn btn-secondary">Cancel</a>
+      {% endif %}
     </div>
   </form>
 </div>
