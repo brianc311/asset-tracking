@@ -25,7 +25,7 @@ class AssetReportMacColumnsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<th>MAC</th>")
         self.assertContains(response, "AA:BB:CC:DD:EE:01")
-        self.assertNotContains(response, "MAC 2")
+        self.assertNotContains(response, "<th>MAC 2</th>")
 
     def test_html_report_includes_mac_2_when_any_row_has_it(self):
         self.asset.mac_address_2 = "AA:BB:CC:DD:EE:02"
@@ -40,15 +40,16 @@ class AssetReportMacColumnsTests(TestCase):
         response = self.client.get("/assets/reports/view/", {"site": "Test"})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<th>MAC</th>")
-        self.assertNotContains(response, "MAC 2")
+        self.assertNotContains(response, "<th>MAC 2</th>")
 
     def test_pdf_omits_empty_mac_2_header(self):
         qs = Asset.objects.filter(pk=self.asset.pk)
         data, show_mac_2 = asset_report_table_data(qs)
         self.assertFalse(show_mac_2)
-        self.assertEqual(data[0][5], "MAC")
+        self.assertIn("MAC", data[0])
         self.assertNotIn("MAC 2", data[0])
-        self.assertEqual(data[1][5], "AA:BB:CC:DD:EE:01")
+        mac_index = data[0].index("MAC")
+        self.assertEqual(data[1][mac_index], "AA:BB:CC:DD:EE:01")
         pdf = assets_pdf_bytes(qs, title="Asset Report")
         self.assertTrue(pdf.startswith(b"%PDF"))
 
@@ -58,8 +59,9 @@ class AssetReportMacColumnsTests(TestCase):
         qs = Asset.objects.filter(pk=self.asset.pk)
         data, show_mac_2 = asset_report_table_data(qs)
         self.assertTrue(show_mac_2)
-        self.assertEqual(data[0][6], "MAC 2")
-        self.assertEqual(data[1][6], "AA:BB:CC:DD:EE:02")
+        self.assertIn("MAC 2", data[0])
+        mac_2_index = data[0].index("MAC 2")
+        self.assertEqual(data[1][mac_2_index], "AA:BB:CC:DD:EE:02")
         pdf = assets_pdf_bytes(qs, title="Asset Report")
         self.assertTrue(pdf.startswith(b"%PDF"))
 

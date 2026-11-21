@@ -9,6 +9,12 @@ from apps.assets.barcode_utils import assets_have_second_mac, assets_pdf_respons
 from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
 from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
 from apps.assets.models import Asset
+from apps.assets.report_columns import (
+    REPORT_COLUMN_KEYS,
+    REPORT_COLUMN_LABELS,
+    parse_report_columns,
+    visible_report_columns,
+)
 from apps.assets.site_names import get_known_site_names, get_site_names_with_assets
 
 
@@ -175,6 +181,27 @@ def _site_report_queryset(site_name):
     return Asset.objects.filter(site_name=site_name, is_archived=False).order_by("asset_number")
 
 
+def _report_column_context(request, assets):
+    column_keys = parse_report_columns(request.GET.get("cols"))
+    show_mac_2 = assets_have_second_mac(assets)
+    visible_keys = visible_report_columns(column_keys, show_mac_2=show_mac_2)
+    return {
+        "show_mac_2": show_mac_2,
+        "column_keys": column_keys,
+        "visible_keys": visible_keys,
+        "visible_headers": [REPORT_COLUMN_LABELS[key] for key in visible_keys],
+        "report_columns": [
+            {
+                "key": key,
+                "label": REPORT_COLUMN_LABELS[key],
+                "selected": key in column_keys,
+            }
+            for key in REPORT_COLUMN_KEYS
+        ],
+        "cols_query": ",".join(column_keys),
+    }
+
+
 @login_required
 def site_reports_index(request):
     if not request.user.can_manage_assets():
@@ -200,17 +227,18 @@ def site_report_view(request):
 
     assets = _site_report_queryset(site_name)
     title = f"Asset Report — {site_name}"
+    context = {
+        "assets": assets,
+        "site_name": site_name,
+        "title": title,
+        "total": assets.count(),
+        "email_configured": email_is_configured(),
+    }
+    context.update(_report_column_context(request, assets))
     return render(
         request,
         "assets/site_report.html",
-        {
-            "assets": assets,
-            "site_name": site_name,
-            "title": title,
-            "total": assets.count(),
-            "show_mac_2": assets_have_second_mac(assets),
-            "email_configured": email_is_configured(),
-        },
+        context,
     )
 
 
@@ -238,19 +266,21 @@ def print_report(request):
         assets = Asset.objects.filter(is_archived=False)
         title = "All Active Assets Report"
 
+    column_context = _report_column_context(request, assets)
     export = request.GET.get("export")
     if export == "pdf":
-        return assets_pdf_response(assets, title=title)
+        return assets_pdf_response(assets, title=title, column_keys=column_context["column_keys"])
 
+    context = {
+        "assets": assets,
+        "title": title,
+        "total": assets.count(),
+    }
+    context.update(column_context)
     return render(
         request,
         "assets/print_report.html",
-        {
-            "assets": assets,
-            "title": title,
-            "total": assets.count(),
-            "show_mac_2": assets_have_second_mac(assets),
-        },
+        context,
     )
 
 

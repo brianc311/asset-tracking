@@ -17,35 +17,52 @@
 <body>
   <div class="no-print" style="margin-bottom:1rem">
     <button onclick="window.print()">Print</button>
-    <a href="?export=pdf{% if request.GET.ids %}&ids={{ request.GET.ids }}{% endif %}{% if request.GET.session %}&session={{ request.GET.session }}{% endif %}">Download PDF</a>
+    <a href="?{% if request.GET.site %}site={{ request.GET.site|urlencode }}&amp;{% endif %}{% if request.GET.ids %}ids={{ request.GET.ids }}&amp;{% endif %}{% if request.GET.session %}session={{ request.GET.session }}&amp;{% endif %}{% if cols_query %}cols={{ cols_query }}&amp;{% endif %}export=pdf">Download PDF</a>
   </div>
   <h1>{{ title }}</h1>
   <p>Generated {% now "M j, Y g:i A" %}</p>
+  <form method="get" class="no-print" style="margin:1rem 0">
+    {% if request.GET.site %}<input type="hidden" name="site" value="{{ request.GET.site }}">{% endif %}
+    {% if request.GET.ids %}<input type="hidden" name="ids" value="{{ request.GET.ids }}">{% endif %}
+    {% if request.GET.session %}<input type="hidden" name="session" value="{{ request.GET.session }}">{% endif %}
+    <input type="hidden" name="cols" value="{{ cols_query }}">
+    <p style="margin:0 0 0.5rem"><strong>Columns</strong></p>
+    {% for col in report_columns %}
+    <label style="margin-right:0.75rem">
+      <input type="checkbox" name="col" value="{{ col.key }}" {% if col.selected %}checked{% endif %}>
+      {{ col.label }}
+    </label>
+    {% endfor %}
+    <noscript><button type="submit">Apply</button></noscript>
+  </form>
   <table>
     <thead>
       <tr>
-        <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>MAC</th>
-        {% if show_mac_2 %}<th>MAC 2</th>{% endif %}
-        <th>Model</th><th>Location</th><th>Comments</th>
+        {% for header in visible_headers %}<th>{{ header }}</th>{% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for asset in assets %}
       <tr>
-        <td>{{ asset.asset_number|default:"—" }}</td>
-        <td>{{ asset.barcode_value }}</td>
-        <td>{{ asset.site_name|default:"—" }}</td>
-        <td>{{ asset.product_name }}</td>
-        <td>{{ asset.serial_number|default:"—" }}</td>
-        <td>{{ asset.mac_address|default:"—" }}</td>
-        {% if show_mac_2 %}<td>{{ asset.mac_address_2|default:"—" }}</td>{% endif %}
-        <td>{{ asset.model_number|default:"—" }}</td>
-        <td>{{ asset.location|default:"—" }}</td>
-        <td>{{ asset.comments|default:"—" }}</td>
+        {% for key in visible_keys %}
+        <td>{% include "assets/_report_cell.html" %}</td>
+        {% endfor %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
   <p class="total">Total items: {{ total }}</p>
+  <script>
+  document.querySelectorAll('input[name=col]').forEach(box => {
+    box.addEventListener('change', () => {
+      const form = box.form;
+      const keys = Array.from(form.querySelectorAll('input[name=col]:checked')).map(el => el.value);
+      const params = new URLSearchParams(new FormData(form));
+      params.delete('col');
+      params.set('cols', keys.join(','));
+      window.location.search = params.toString();
+    });
+  });
+  </script>
 </body>
 </html>

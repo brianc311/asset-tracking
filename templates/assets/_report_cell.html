@@ -1,0 +1,12 @@
+{% if key == "number" %}{{ asset.asset_number|default:"—" }}
+{% elif key == "barcode" %}{{ asset.barcode_value }}
+{% elif key == "site" %}{{ asset.site_name|default:"—" }}
+{% elif key == "product" %}{{ asset.product_name }}
+{% elif key == "device_name" %}{{ asset.device_name|default:"—" }}
+{% elif key == "serial" %}{{ asset.serial_number|default:"—" }}
+{% elif key == "mac" %}{{ asset.mac_address|default:"—" }}
+{% elif key == "mac_2" %}{{ asset.mac_address_2|default:"—" }}
+{% elif key == "model" %}{{ asset.model_number|default:"—" }}
+{% elif key == "location" %}{{ asset.location|default:"—" }}
+{% elif key == "comments" %}{{ asset.comments|default:"—" }}
+{% endif %}

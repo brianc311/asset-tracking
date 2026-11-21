@@ -13,6 +13,12 @@ from reportlab.lib.units import inch
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from apps.assets.models import Asset
+from apps.assets.report_columns import (
+    REPORT_COLUMN_LABELS,
+    parse_report_columns,
+    report_column_cells,
+    visible_report_columns,
+)
 
 
 def generate_qr_image(barcode_value: str, box_size: int = 10) -> io.BytesIO:
@@ -76,36 +82,17 @@ def assets_have_second_mac(assets) -> bool:
     return any((getattr(asset, "mac_address_2", None) or "").strip() for asset in assets)
 
 
-def asset_report_table_data(assets):
+def asset_report_table_data(assets, column_keys=None):
     show_mac_2 = assets_have_second_mac(assets)
-    headers = ["#", "Barcode", "Site", "Product", "Serial", "MAC"]
-    if show_mac_2:
-        headers.append("MAC 2")
-    headers.extend(["Model", "Location", "Comments"])
-    data = [headers]
+    keys = visible_report_columns(column_keys or parse_report_columns(None), show_mac_2=show_mac_2)
+    data = [[REPORT_COLUMN_LABELS[key] for key in keys]]
     for asset in assets:
-        row = [
-            str(asset.asset_number or "—"),
-            asset.barcode_value,
-            (asset.site_name[:20] or "—"),
-            asset.product_name[:30],
-            (asset.serial_number[:20] or "—"),
-            (asset.mac_address[:17] or "—"),
-        ]
-        if show_mac_2:
-            row.append(asset.mac_address_2[:17] or "—")
-        row.extend(
-            [
-                (asset.model_number[:20] or "—"),
-                (asset.location[:20] or "—"),
-                (asset.comments[:40] + "…") if len(asset.comments) > 40 else (asset.comments or "—"),
-            ]
-        )
-        data.append(row)
+        cells = report_column_cells(asset, show_mac_2=show_mac_2)
+        data.append([cells[key] for key in keys])
     return data, show_mac_2
 
 
-def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
+def assets_pdf_bytes(assets, title: str = "Asset Report", column_keys=None) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch)
     styles = getSampleStyleSheet()
@@ -118,7 +105,7 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     )
 
     elements = [Paragraph(title, title_style), Spacer(1, 0.2 * inch)]
-    data, _show_mac_2 = asset_report_table_data(assets)
+    data, _show_mac_2 = asset_report_table_data(assets, column_keys=column_keys)
 
     table = Table(data, repeatRows=1)
     table.setStyle(
@@ -141,8 +128,11 @@ def assets_pdf_bytes(assets, title: str = "Asset Report") -> bytes:
     return buffer.getvalue()
 
 
-def assets_pdf_response(assets, title: str = "Asset Report") -> HttpResponse:
-    response = HttpResponse(assets_pdf_bytes(assets, title=title), content_type="application/pdf")
+def assets_pdf_response(assets, title: str = "Asset Report", column_keys=None) -> HttpResponse:
+    response = HttpResponse(
+        assets_pdf_bytes(assets, title=title, column_keys=column_keys),
+        content_type="application/pdf",
+    )
     response["Content-Disposition"] = f'attachment; filename="{title.replace(" ", "_").lower()}.pdf"'
     return response
 
