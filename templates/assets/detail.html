@@ -25,17 +25,20 @@
   </div>
   <div class="card" style="text-align:center">
     <div class="toolbar no-print" style="justify-content:center;margin-bottom:0.75rem">
-      <button type="button" class="btn btn-primary" id="qr-mode-asset" aria-pressed="true">Asset QR</button>
-      <button type="button" class="btn btn-secondary" id="qr-mode-web" aria-pressed="false">Website QR</button>
+      <button type="button" class="btn btn-primary" id="qr-mode-asset" data-qr-mode="asset" aria-pressed="true">Asset QR</button>
+      <button type="button" class="btn btn-secondary" id="qr-mode-web" data-qr-mode="web" aria-pressed="false">Website QR</button>
+      <button type="button" class="btn btn-secondary" id="qr-mode-details" data-qr-mode="details" aria-pressed="false">Details QR</button>
     </div>
     <img id="asset-qr-image"
          src="{% url 'assets:barcode' asset.pk %}"
          data-asset-src="{% url 'assets:barcode' asset.pk %}"
          data-web-src="{% url 'assets:barcode' asset.pk %}?kind=scan"
+         data-details-src="{% url 'assets:barcode' asset.pk %}?kind=details"
          alt="Asset QR"
          style="max-width:100%;border-radius:8px">
-    <p id="qr-caption-asset" style="margin-top:0.75rem;font-size:0.875rem">Encodes <code>{{ asset.barcode_value }}</code></p>
-    <p id="qr-caption-web" style="margin-top:0.75rem;font-size:0.875rem;display:none">Phone camera opens the scan page</p>
+    <p id="qr-caption-asset" data-qr-caption="asset" style="margin-top:0.75rem;font-size:0.875rem">Encodes <code>{{ asset.barcode_value }}</code></p>
+    <p id="qr-caption-web" data-qr-caption="web" style="margin-top:0.75rem;font-size:0.875rem;display:none">Phone camera opens the scan page</p>
+    <p id="qr-caption-details" data-qr-caption="details" style="margin-top:0.75rem;font-size:0.875rem;display:none">Device name, location, serial, and MAC for Notes or a scanner</p>
     <p style="margin-top:0.5rem;font-size:0.875rem"><a href="{{ scan_url }}">Open scan registration page</a></p>
     {% if asset.photo %}
     <hr style="border-color:var(--border);margin:1rem 0">
@@ -48,26 +51,42 @@
 <script>
 (function () {
   var img = document.getElementById("asset-qr-image");
-  var assetBtn = document.getElementById("qr-mode-asset");
-  var webBtn = document.getElementById("qr-mode-web");
-  var assetCaption = document.getElementById("qr-caption-asset");
-  var webCaption = document.getElementById("qr-caption-web");
-  if (!img || !assetBtn || !webBtn) {
+  var buttons = document.querySelectorAll("[data-qr-mode]");
+  var captions = document.querySelectorAll("[data-qr-caption]");
+  if (!img || !buttons.length) {
     return;
   }
+  var srcByMode = {
+    asset: "data-asset-src",
+    web: "data-web-src",
+    details: "data-details-src"
+  };
+  var altByMode = {
+    asset: "Asset QR",
+    web: "Website QR",
+    details: "Details QR"
+  };
   function setMode(mode) {
-    var isWeb = mode === "web";
-    img.src = isWeb ? img.getAttribute("data-web-src") : img.getAttribute("data-asset-src");
-    img.alt = isWeb ? "Website QR" : "Asset QR";
-    assetCaption.style.display = isWeb ? "none" : "";
-    webCaption.style.display = isWeb ? "" : "none";
-    assetBtn.className = isWeb ? "btn btn-secondary" : "btn btn-primary";
-    webBtn.className = isWeb ? "btn btn-primary" : "btn btn-secondary";
-    assetBtn.setAttribute("aria-pressed", isWeb ? "false" : "true");
-    webBtn.setAttribute("aria-pressed", isWeb ? "true" : "false");
+    var srcAttr = srcByMode[mode];
+    if (!srcAttr) {
+      return;
+    }
+    img.src = img.getAttribute(srcAttr);
+    img.alt = altByMode[mode] || "QR";
+    captions.forEach(function (caption) {
+      caption.style.display = caption.getAttribute("data-qr-caption") === mode ? "" : "none";
+    });
+    buttons.forEach(function (button) {
+      var active = button.getAttribute("data-qr-mode") === mode;
+      button.className = active ? "btn btn-primary" : "btn btn-secondary";
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
-  assetBtn.addEventListener("click", function () { setMode("asset"); });
-  webBtn.addEventListener("click", function () { setMode("web"); });
+  buttons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      setMode(button.getAttribute("data-qr-mode"));
+    });
+  });
 })();
 </script>
 {% endblock %}

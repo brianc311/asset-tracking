@@ -63,14 +63,43 @@ def barcode_data_uri(value: str) -> str:
         return ""
 
 
-def barcode_image_response(asset: Asset, *, data: str | None = None, as_qr: bool = False) -> HttpResponse:
+def asset_details_qr_text(asset: Asset) -> str:
+    lines = []
+    device_name = (asset.device_name or "").strip()
+    location = (asset.location or "").strip()
+    serial = (asset.serial_number or "").strip()
+    mac = (asset.mac_address or "").strip()
+    mac_2 = (asset.mac_address_2 or "").strip()
+    if device_name:
+        lines.append(f"Device Name: {device_name}")
+    if location:
+        lines.append(f"Location: {location}")
+    if serial:
+        lines.append(f"Serial: {serial}")
+    if mac:
+        lines.append(f"MAC: {mac}")
+    if mac_2:
+        lines.append(f"MAC 2: {mac_2}")
+    if not lines:
+        return "No device name, location, serial, or MAC"
+    return "\n".join(lines)
+
+
+def barcode_image_response(
+    asset: Asset,
+    *,
+    data: str | None = None,
+    as_qr: bool = False,
+    filename_suffix: str | None = None,
+) -> HttpResponse:
     payload = asset.barcode_value if data is None else data
     if as_qr or asset.barcode_type == Asset.BarcodeType.QR:
         buffer = generate_qr_image(payload)
     else:
         buffer = generate_1d_barcode_image(payload, asset.barcode_type)
 
-    filename = f"{asset.barcode_value}-scan.png" if as_qr else f"{asset.barcode_value}.png"
+    suffix = f"-{filename_suffix}" if filename_suffix else ""
+    filename = f"{asset.barcode_value}{suffix}.png"
     response = HttpResponse(buffer.getvalue(), content_type="image/png")
     response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
