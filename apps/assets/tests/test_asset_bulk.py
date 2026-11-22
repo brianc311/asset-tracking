@@ -43,6 +43,8 @@ class AssetBulkUpdateTests(TestCase):
         self.assertContains(response, "Device Name")
         self.assertContains(response, "Location")
         self.assertContains(response, "Choose a field")
+        self.assertContains(response, "stopImmediatePropagation")
+        self.assertContains(response, "openBulkUpdateModal")
 
     def test_bulk_updates_product_name(self):
         response = self._post(field="product_name", product_name="Switches")
