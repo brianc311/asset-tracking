@@ -5,12 +5,14 @@ from apps.assets.product_types import resolve_product_name
 from apps.assets.site_names import resolve_site_name
 
 BULK_UPDATE_FIELD_CHOICES = (
+    ("device_name", "Device Name"),
+    ("location", "Location"),
     ("product_name", "Product"),
     ("site_name", "Site"),
     ("model_number", "Model"),
-    ("location", "Location"),
     ("comments", "Comments"),
 )
+BULK_UPDATE_TEXT_FIELDS = frozenset({"device_name", "location", "model_number"})
 BULK_UPDATE_FIELDS = tuple(key for key, _label in BULK_UPDATE_FIELD_CHOICES)
 BULK_UPDATE_LABELS = dict(BULK_UPDATE_FIELD_CHOICES)
 
@@ -26,9 +28,7 @@ def resolve_bulk_value(field: str, cleaned_data: dict) -> str:
         if not site:
             raise ValidationError("Please select or enter a site name.")
         return site
-    if field == "model_number":
-        return (cleaned_data.get("value") or "").strip()
-    if field == "location":
+    if field in BULK_UPDATE_TEXT_FIELDS:
         return (cleaned_data.get("value") or "").strip()
     if field == "comments":
         return cleaned_data.get("comments") or ""

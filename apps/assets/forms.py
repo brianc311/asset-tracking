@@ -146,7 +146,7 @@ class BulkActionForm(forms.Form):
 class BulkUpdateForm(forms.Form):
     field = forms.ChoiceField(
         choices=BULK_UPDATE_FIELD_CHOICES,
-        label="Field",
+        label="Which field to change",
         widget=forms.Select(attrs={"class": "form-input", "id": "id_bulk_field"}),
     )
     value = forms.CharField(
@@ -162,6 +162,9 @@ class BulkUpdateForm(forms.Form):
 
     def __init__(self, *args, known_site_names=None, known_product_names=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["field"].choices = [("", "Choose a field…")] + list(
+            BULK_UPDATE_FIELD_CHOICES
+        )
         apply_site_name_fields(self, known_site_names or [])
         apply_product_type_fields(self, known_product_names or [])
 

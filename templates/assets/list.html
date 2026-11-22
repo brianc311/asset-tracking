@@ -44,7 +44,7 @@
 <div id="bulk-update-modal" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal-box" style="max-width:480px">
     <h3 class="modal-title">Update selected</h3>
-    <p class="modal-body">Choose one field and the new value for the checked assets.</p>
+    <p class="modal-body">Choose which field to change, then enter the new value. Every checked asset gets the same value.</p>
     <form id="bulk-update-form" method="post" action="{% url 'assets:bulk' %}">
       {% csrf_token %}
       <input type="hidden" name="action" value="update">
@@ -139,24 +139,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const rows = {
     product_name: document.getElementById('bulk-row-product'),
     site_name: document.getElementById('bulk-row-site'),
-    model_number: document.getElementById('bulk-row-value'),
-    location: document.getElementById('bulk-row-value'),
     comments: document.getElementById('bulk-row-comments')
+  };
+  const valueRow = document.getElementById('bulk-row-value');
+  const valueInput = document.getElementById('id_bulk_value');
+  const valueLabel = document.querySelector('label[for="id_bulk_value"]');
+  const applyBtn = updateForm?.querySelector('[type="submit"]');
+  const textFields = {
+    device_name: { label: 'New Device Name', placeholder: 'e.g. EPS-Switch-01' },
+    location: { label: 'New Location', placeholder: 'Room, shelf…' },
+    model_number: { label: 'New Model', placeholder: '' }
   };
 
   function syncBulkField() {
-    const field = fieldSelect?.value;
+    const field = fieldSelect?.value || '';
     Object.keys(rows).forEach((key) => {
       if (rows[key]) rows[key].hidden = true;
     });
-    if (field === 'model_number' || field === 'location') {
-      if (rows.model_number) rows.model_number.hidden = false;
+    if (valueRow) valueRow.hidden = true;
+    const textMeta = textFields[field];
+    if (textMeta) {
+      if (valueRow) valueRow.hidden = false;
+      if (valueLabel) valueLabel.textContent = textMeta.label;
+      if (valueInput) valueInput.placeholder = textMeta.placeholder;
     } else if (rows[field]) {
       rows[field].hidden = false;
     }
     if (productWrap && productSelect) {
       productWrap.hidden = productSelect.value !== '__new__';
     }
+    if (applyBtn) applyBtn.disabled = !field;
   }
 
   window.openBulkUpdateModal = function (ids) {
@@ -176,12 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   updateForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const field = fieldSelect?.selectedOptions[0];
+    if (!fieldSelect?.value) return;
+    const fieldLabel = fieldSelect.selectedOptions[0]?.text || 'this field';
     const count = (updateForm.querySelector('[name=asset_ids]').value || '')
       .split(',').filter(Boolean).length;
     const ok = await AppModal.confirm(
       'Confirm update',
-      `Set ${field ? field.text : 'this field'} on ${count} item(s)?`
+      `Set ${fieldLabel} on ${count} item(s)?`
     );
     if (ok) updateForm.submit();
   });

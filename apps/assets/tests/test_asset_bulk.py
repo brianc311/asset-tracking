@@ -40,6 +40,9 @@ class AssetBulkUpdateTests(TestCase):
         response = self.client.get(reverse("assets:list"))
         self.assertContains(response, "Update selected")
         self.assertContains(response, 'name="field"')
+        self.assertContains(response, "Device Name")
+        self.assertContains(response, "Location")
+        self.assertContains(response, "Choose a field")
 
     def test_bulk_updates_product_name(self):
         response = self._post(field="product_name", product_name="Switches")
@@ -83,6 +86,21 @@ class AssetBulkUpdateTests(TestCase):
         self._post(field="location", value="")
         self.a1.refresh_from_db()
         self.assertEqual(self.a1.location, "")
+
+    def test_bulk_updates_device_name(self):
+        response = self._post(field="device_name", value="EPS-Switch-01")
+        self.a1.refresh_from_db()
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a1.device_name, "EPS-Switch-01")
+        self.assertEqual(self.a2.device_name, "EPS-Switch-01")
+        self.assertContains(response, "Updated Device Name")
+
+    def test_bulk_clears_device_name_when_blank(self):
+        self.a1.device_name = "Old-Name"
+        self.a1.save()
+        self._post(field="device_name", value="")
+        self.a1.refresh_from_db()
+        self.assertEqual(self.a1.device_name, "")
 
     def test_archive_still_works(self):
         self.client.post(
