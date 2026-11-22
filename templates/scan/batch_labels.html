@@ -25,13 +25,31 @@
   Type: <strong>{{ product_name }}</strong>
 </p>
 
+{% if mode != "value" %}
+<form method="get" class="no-print" style="margin:1rem 0">
+  <input type="hidden" name="mode" value="device">
+  {% if selected_ids %}<input type="hidden" name="ids" value="{{ selected_ids }}">{% endif %}
+  <input type="hidden" name="fields" value="{{ fields_query }}">
+  <p style="margin:0 0 0.5rem"><strong>Extra fields</strong></p>
+  {% for field in label_fields %}
+  <label style="margin-right:0.75rem">
+    <input type="checkbox" name="field" value="{{ field.key }}" {% if field.selected %}checked{% endif %}>
+    {{ field.label }}
+  </label>
+  {% endfor %}
+  <noscript><button type="submit" class="btn btn-secondary">Apply</button></noscript>
+</form>
+{% endif %}
+
 <div class="label-sheet" data-label-count="{{ labels|length }}">
   {% for label in labels %}
   <section class="label-sticker">
     <h2>{{ label.title }}</h2>
     {% if label.value %}<div class="label-value">{{ label.value }}</div>{% endif %}
-    {% if label.extra %}<div class="label-extra">{{ label.extra }}</div>{% endif %}
-    {% if label.barcode %}<img class="label-barcode" alt="{{ label.value }}" src="{{ label.barcode }}">{% endif %}
+    {% for line in label.extra_lines %}
+    <div class="label-extra">{{ line }}</div>
+    {% endfor %}
+    {% if label.barcode %}<img class="label-barcode" alt="{{ label.barcode_alt|default:label.value }}" src="{{ label.barcode }}">{% endif %}
     {% if label.mac_barcode %}<img class="label-barcode" alt="MAC barcode" src="{{ label.mac_barcode }}">{% endif %}
     {% if label.mac2_barcode %}<img class="label-barcode" alt="MAC 2 barcode" src="{{ label.mac2_barcode }}">{% endif %}
   </section>
@@ -39,4 +57,18 @@
   <p>No labels selected.</p>
   {% endfor %}
 </div>
+{% if mode != "value" %}
+<script>
+document.querySelectorAll('input[name=field]').forEach(box => {
+  box.addEventListener('change', () => {
+    const form = box.form;
+    const keys = Array.from(form.querySelectorAll('input[name=field]:checked')).map(el => el.value);
+    const params = new URLSearchParams(new FormData(form));
+    params.delete('field');
+    params.set('fields', keys.join(','));
+    window.location.search = params.toString();
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

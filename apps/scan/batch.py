@@ -13,6 +13,13 @@ from apps.assets.models import Asset
 from apps.assets.product_types import get_known_product_names
 from apps.assets.site_names import get_known_site_names
 from apps.scan.forms import BatchItemForm, StartBatchForm
+from apps.scan.label_fields import (
+    LABEL_FIELD_KEYS,
+    LABEL_FIELD_LABELS,
+    device_label_extra_lines,
+    device_label_main_value,
+    parse_label_fields,
+)
 
 BATCH_KEY = "batch_session_key"
 BATCH_META = "batch_sessions_meta"
@@ -295,6 +302,7 @@ def batch_labels(request):
 
     mode = request.GET.get("mode", "device")
     labels = []
+    field_keys = parse_label_fields(request.GET.get("fields") if "fields" in request.GET else None)
     if mode == "value":
         for asset in assets:
             if asset.serial_number:
@@ -326,18 +334,30 @@ def batch_labels(request):
             labels.append(
                 {
                     "title": f"{asset.product_name} — {asset.site_name}",
-                    "value": asset.serial_number,
-                    "extra": " / ".join(
-                        mac for mac in (asset.mac_address, asset.mac_address_2) if mac
-                    ),
+                    "value": device_label_main_value(asset),
+                    "extra_lines": device_label_extra_lines(asset, field_keys),
+                    "barcode_alt": asset.serial_number,
                     "barcode": barcode_data_uri(asset.serial_number) if asset.serial_number else "",
                     "mac_barcode": barcode_data_uri(asset.mac_address) if asset.mac_address else "",
                     "mac2_barcode": barcode_data_uri(asset.mac_address_2) if asset.mac_address_2 else "",
                 }
             )
 
+    label_fields = [
+        {"key": key, "label": LABEL_FIELD_LABELS[key], "selected": key in field_keys}
+        for key in LABEL_FIELD_KEYS
+    ]
+    fields_query = ",".join(field_keys)
     return render(
         request,
         "scan/batch_labels.html",
-        {"labels": labels, "mode": mode, "site_name": site, "product_name": product},
+        {
+            "labels": labels,
+            "mode": mode,
+            "site_name": site,
+            "product_name": product,
+            "label_fields": label_fields,
+            "fields_query": fields_query,
+            "selected_ids": request.GET.get("ids", ""),
+        },
     )

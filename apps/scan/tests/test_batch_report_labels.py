@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from apps.assets.models import Asset
+from apps.scan.label_fields import DEFAULT_LABEL_FIELDS, parse_label_fields
 
 User = get_user_model()
 
@@ -128,3 +129,44 @@ class BatchLabelTests(TestCase):
         self.assertContains(response, "SN1")
         self.assertContains(response, "AA:BB:CC:DD:EE:01")
         self.assertContains(response, "AA:BB:CC:DD:EE:02")
+        self.assertNotContains(response, 'name="field"')
+
+    def test_device_mode_prints_device_name_as_main_line(self):
+        Asset.objects.filter(serial_number="SN1").update(device_name="EPS-AP-01")
+        response = self.client.get("/scan/batch/labels/?mode=device")
+        self.assertContains(response, "EPS-AP-01")
+        self.assertContains(response, "SN1")
+        self.assertContains(response, 'name="field"')
+
+    def test_device_mode_fields_query_adds_selected_extra_lines(self):
+        Asset.objects.filter(serial_number="SN1").update(
+            device_name="EPS-AP-01",
+            location="Room 12",
+            model_number="SP4628",
+        )
+        response = self.client.get("/scan/batch/labels/", {"mode": "device", "fields": "location,model"})
+        self.assertContains(response, "Location: Room 12")
+        self.assertContains(response, "Model: SP4628")
+        self.assertNotContains(response, "Serial: SN1")
+        self.assertContains(response, 'alt="SN1"')
+
+    def test_device_mode_empty_fields_omits_extra_text(self):
+        Asset.objects.filter(serial_number="SN1").update(device_name="EPS-AP-01")
+        response = self.client.get("/scan/batch/labels/", {"mode": "device", "fields": ""})
+        self.assertContains(response, "EPS-AP-01")
+        self.assertNotContains(response, "Serial: SN1")
+        self.assertNotContains(response, "MAC: AA:BB:CC:DD:EE:01")
+
+
+class ParseLabelFieldsTests(SimpleTestCase):
+    def test_missing_defaults_to_serial_and_macs(self):
+        self.assertEqual(parse_label_fields(None), DEFAULT_LABEL_FIELDS)
+
+    def test_empty_means_no_extra_fields(self):
+        self.assertEqual(parse_label_fields(""), ())
+
+    def test_filters_unknown_and_keeps_canonical_order(self):
+        self.assertEqual(
+            parse_label_fields("location,serial,location,nope,mac"),
+            ("serial", "mac", "location"),
+        )
