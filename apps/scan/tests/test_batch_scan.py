@@ -70,6 +70,15 @@ class BatchViewTests(TestCase):
         self.assertContains(follow, "AP")
         self.assertContains(follow, "Skip 2nd MAC")
 
+    def test_home_loads_barcode_scanner_library(self):
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        response = self.client.get("/scan/batch/")
+        self.assertContains(response, "html5-qrcode")
+        self.assertContains(response, "field-scanner")
+
     def test_non_staff_user_cannot_access_batch_views(self):
         user = User.objects.create_user(username="user", password="x", role=User.Role.USER)
         self.client.force_login(user)

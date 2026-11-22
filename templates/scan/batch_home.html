@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Batch Scan — {{ branding.site_name }}{% endblock %}
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
 {% block content %}
 <h1 class="page-title">Batch Scan</h1>
 <p class="page-subtitle">
