@@ -1,7 +1,10 @@
 from django import forms
+from django.core.exceptions import ValidationError as DjangoValidationError
 
+from apps.assets.bulk import BULK_UPDATE_FIELD_CHOICES, resolve_bulk_value
 from apps.assets.mac import normalize_mac
 from apps.assets.models import Asset
+from apps.assets.product_types import apply_product_type_fields
 from apps.assets.site_names import apply_site_name_fields, resolve_site_name
 
 ASSET_FIELD_ORDER = [
@@ -110,12 +113,57 @@ class AssetForm(forms.ModelForm):
 class BulkActionForm(forms.Form):
     ACTION_ARCHIVE = "archive"
     ACTION_DELETE = "delete"
+    ACTION_UPDATE = "update"
     ACTION_CHOICES = [
         (ACTION_ARCHIVE, "Archive selected"),
         (ACTION_DELETE, "Delete selected"),
+        (ACTION_UPDATE, "Update selected"),
     ]
     action = forms.ChoiceField(choices=ACTION_CHOICES)
     asset_ids = forms.CharField(widget=forms.HiddenInput())
+    field = forms.ChoiceField(choices=BULK_UPDATE_FIELD_CHOICES, required=False)
+    value = forms.CharField(required=False)
+    comments = forms.CharField(required=False)
+    site_name = forms.CharField(required=False)
+    new_site_name = forms.CharField(required=False)
+    product_name = forms.CharField(required=False)
+    new_product_name = forms.CharField(required=False)
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("action") != self.ACTION_UPDATE:
+            return cleaned
+        field = cleaned.get("field")
+        if not field:
+            raise forms.ValidationError("Choose a field to update.")
+        try:
+            cleaned["resolved_value"] = resolve_bulk_value(field, cleaned)
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(exc.messages)
+        return cleaned
+
+
+class BulkUpdateForm(forms.Form):
+    field = forms.ChoiceField(
+        choices=BULK_UPDATE_FIELD_CHOICES,
+        label="Field",
+        widget=forms.Select(attrs={"class": "form-input", "id": "id_bulk_field"}),
+    )
+    value = forms.CharField(
+        required=False,
+        label="New value",
+        widget=forms.TextInput(attrs={"class": "form-input", "id": "id_bulk_value"}),
+    )
+    comments = forms.CharField(
+        required=False,
+        label="Comments",
+        widget=forms.Textarea(attrs={"class": "form-input", "rows": 3, "id": "id_bulk_comments"}),
+    )
+
+    def __init__(self, *args, known_site_names=None, known_product_names=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        apply_site_name_fields(self, known_site_names or [])
+        apply_product_type_fields(self, known_product_names or [])
 
 
 class SiteReportEmailForm(forms.Form):

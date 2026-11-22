@@ -7,8 +7,10 @@ from django.views.decorators.http import require_POST
 
 from apps.assets.barcode_utils import assets_have_second_mac, assets_pdf_response, barcode_image_response
 from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
-from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
+from apps.assets.bulk import BULK_UPDATE_LABELS, apply_bulk_field_update
+from apps.assets.forms import AssetForm, BulkActionForm, BulkUpdateForm, SiteReportEmailForm
 from apps.assets.models import Asset
+from apps.assets.product_types import get_known_product_names
 from apps.assets.report_columns import (
     REPORT_COLUMN_KEYS,
     REPORT_COLUMN_LABELS,
@@ -53,6 +55,10 @@ def asset_list(request):
         if q.isdigit():
             filters |= Q(asset_number=int(q))
         qs = qs.filter(filters)
+    bulk_update_form = BulkUpdateForm(
+        known_site_names=get_known_site_names(request),
+        known_product_names=get_known_product_names(),
+    )
     return render(
         request,
         "assets/list.html",
@@ -61,6 +67,7 @@ def asset_list(request):
             "show_archived": show_archived,
             "query": q,
             "site_filter": site_filter,
+            "bulk_update_form": bulk_update_form,
         },
     )
 
@@ -183,6 +190,12 @@ def asset_details_card(request, pk):
 def bulk_action(request):
     form = BulkActionForm(request.POST)
     if not form.is_valid():
+        if request.POST.get("action") == BulkActionForm.ACTION_UPDATE:
+            detail = form.non_field_errors()
+            messages.error(
+                request,
+                detail[0] if detail else "Could not update the selected assets.",
+            )
         return redirect("assets:list")
 
     ids = [int(x) for x in form.cleaned_data["asset_ids"].split(",") if x.strip().isdigit()]
@@ -194,6 +207,16 @@ def bulk_action(request):
     elif action == BulkActionForm.ACTION_DELETE:
         if request.user.is_admin_role:
             assets.delete()
+    elif action == BulkActionForm.ACTION_UPDATE:
+        count = apply_bulk_field_update(
+            assets,
+            field=form.cleaned_data["field"],
+            value=form.cleaned_data["resolved_value"],
+            user=request.user,
+        )
+        label = BULK_UPDATE_LABELS[form.cleaned_data["field"]]
+        noun = "asset" if count == 1 else "assets"
+        messages.success(request, f"Updated {label} on {count} {noun}.")
 
     return redirect("assets:list")
 

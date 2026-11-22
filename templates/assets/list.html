@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ branding.assets_page_title }} — {{ branding.site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ branding.assets_page_title }}</h1>
@@ -33,11 +34,45 @@
 
 {% if user.can_manage_assets and not show_archived %}
 <div class="toolbar no-print">
+  <button type="button" class="btn btn-secondary" data-bulk-action="update" form="bulk-form">Update selected</button>
   <button type="button" class="btn btn-secondary" data-bulk-action="archive" form="bulk-form">Archive Selected</button>
   {% if user.is_admin_role %}
   <button type="button" class="btn btn-danger" data-bulk-action="delete" form="bulk-form">Delete Selected</button>
   {% endif %}
   <a href="#" class="btn btn-secondary" id="print-selected" style="margin-left:auto">Print Selected</a>
+</div>
+<div id="bulk-update-modal" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:480px">
+    <h3 class="modal-title">Update selected</h3>
+    <p class="modal-body">Choose one field and the new value for the checked assets.</p>
+    <form id="bulk-update-form" method="post" action="{% url 'assets:bulk' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update">
+      <input type="hidden" name="asset_ids" value="">
+      <div class="field-row">
+        <label class="form-label" for="id_bulk_field">{{ bulk_update_form.field.label }}</label>
+        {{ bulk_update_form.field }}
+      </div>
+      <div class="field-row" id="bulk-row-product" hidden>
+        {% include "assets/product_type_fields.html" with form=bulk_update_form %}
+      </div>
+      <div id="bulk-row-site" hidden>
+        {% include "assets/site_name_fields.html" with form=bulk_update_form %}
+      </div>
+      <div class="field-row" id="bulk-row-value" hidden>
+        <label class="form-label" for="id_bulk_value">{{ bulk_update_form.value.label }}</label>
+        {{ bulk_update_form.value }}
+      </div>
+      <div class="field-row" id="bulk-row-comments" hidden>
+        <label class="form-label" for="id_bulk_comments">{{ bulk_update_form.comments.label }}</label>
+        {{ bulk_update_form.comments }}
+      </div>
+      <div class="modal-actions" style="margin-top:1.25rem">
+        <button type="button" class="btn btn-secondary" id="bulk-update-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endif %}
 
@@ -85,6 +120,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/site-name-select.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   initBulkSelect('assets-table', 'bulk-form');
@@ -94,6 +130,62 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ids.length) { await AppModal.alert('No selection', 'Select items to print.'); return; }
     window.open('{% url "assets:report" %}?ids=' + ids.join(','), '_blank');
   });
+
+  const modal = document.getElementById('bulk-update-modal');
+  const updateForm = document.getElementById('bulk-update-form');
+  const fieldSelect = document.getElementById('id_bulk_field');
+  const productSelect = updateForm?.querySelector('.product-name-select');
+  const productWrap = updateForm?.querySelector('.new-product-name-wrap');
+  const rows = {
+    product_name: document.getElementById('bulk-row-product'),
+    site_name: document.getElementById('bulk-row-site'),
+    model_number: document.getElementById('bulk-row-value'),
+    location: document.getElementById('bulk-row-value'),
+    comments: document.getElementById('bulk-row-comments')
+  };
+
+  function syncBulkField() {
+    const field = fieldSelect?.value;
+    Object.keys(rows).forEach((key) => {
+      if (rows[key]) rows[key].hidden = true;
+    });
+    if (field === 'model_number' || field === 'location') {
+      if (rows.model_number) rows.model_number.hidden = false;
+    } else if (rows[field]) {
+      rows[field].hidden = false;
+    }
+    if (productWrap && productSelect) {
+      productWrap.hidden = productSelect.value !== '__new__';
+    }
+  }
+
+  window.openBulkUpdateModal = function (ids) {
+    if (!modal || !updateForm) return;
+    updateForm.querySelector('[name=asset_ids]').value = ids.join(',');
+    modal.classList.add('open');
+    syncBulkField();
+  };
+
+  fieldSelect?.addEventListener('change', syncBulkField);
+  productSelect?.addEventListener('change', syncBulkField);
+  document.getElementById('bulk-update-cancel')?.addEventListener('click', () => {
+    modal?.classList.remove('open');
+  });
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('open');
+  });
+  updateForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const field = fieldSelect?.selectedOptions[0];
+    const count = (updateForm.querySelector('[name=asset_ids]').value || '')
+      .split(',').filter(Boolean).length;
+    const ok = await AppModal.confirm(
+      'Confirm update',
+      `Set ${field ? field.text : 'this field'} on ${count} item(s)?`
+    );
+    if (ok) updateForm.submit();
+  });
+  syncBulkField();
 });
 </script>
 {% endblock %}

@@ -125,6 +125,12 @@ function initBulkSelect(tableId, formId) {
         return;
       }
       const action = btn.dataset.bulkAction;
+      if (action === 'update') {
+        if (typeof window.openBulkUpdateModal === 'function') {
+          window.openBulkUpdateModal(ids);
+        }
+        return;
+      }
       const labels = { archive: 'archive', delete: 'permanently delete' };
       const ok = await AppModal.confirm(
         'Confirm action',
