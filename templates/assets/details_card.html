@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ asset.device_name|default:asset.product_name }} — Details{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto">
+  <h1 class="page-title" style="margin-top:0">Asset details</h1>
+  <p><strong>Device Name:</strong> {{ asset.device_name|default:"—" }}</p>
+  <p><strong>Location:</strong> {{ asset.location|default:"—" }}</p>
+  <p><strong>Serial:</strong> {{ asset.serial_number|default:"—" }}</p>
+  <p><strong>MAC:</strong> {{ asset.mac_address|default:"—" }}</p>
+  {% if asset.mac_address_2 %}
+  <p><strong>MAC 2:</strong> {{ asset.mac_address_2 }}</p>
+  {% endif %}
+</div>
+{% endblock %}

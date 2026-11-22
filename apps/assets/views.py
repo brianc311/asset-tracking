@@ -5,12 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.assets.barcode_utils import (
-    asset_details_qr_text,
-    assets_have_second_mac,
-    assets_pdf_response,
-    barcode_image_response,
-)
+from apps.assets.barcode_utils import assets_have_second_mac, assets_pdf_response, barcode_image_response
 from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
 from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
 from apps.assets.models import Asset
@@ -170,11 +165,17 @@ def asset_barcode(request, pk):
     if kind == "details":
         return barcode_image_response(
             asset,
-            data=asset_details_qr_text(asset),
+            data=asset.get_details_url(request),
             as_qr=True,
             filename_suffix="details",
         )
     return barcode_image_response(asset)
+
+
+@login_required
+def asset_details_card(request, pk):
+    asset = get_object_or_404(Asset, pk=pk)
+    return render(request, "assets/details_card.html", {"asset": asset})
 
 
 @_require_asset_access

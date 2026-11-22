@@ -90,12 +90,7 @@ class AssetBarcodeToggleTests(TestCase):
         text = asset_details_qr_text(self.asset)
         self.assertIn("MAC 2: AA:BB:CC:DD:EE:FF", text)
 
-    def test_details_kind_barcode_image_encodes_details_text(self):
-        self.asset.device_name = "EPS-Switch-01"
-        self.asset.location = "Room 12"
-        self.asset.serial_number = "SN444444"
-        self.asset.mac_address = "1A:23:7G:4E:12:9A"
-        self.asset.save()
+    def test_details_kind_barcode_image_encodes_details_page_url(self):
         with patch("apps.assets.barcode_utils.generate_qr_image", wraps=generate_qr_image) as mock_qr:
             response = self.client.get(
                 reverse("assets:barcode", args=[self.asset.pk]),
@@ -105,8 +100,27 @@ class AssetBarcodeToggleTests(TestCase):
         self.assertEqual(response["Content-Type"], "image/png")
         mock_qr.assert_called()
         payload = mock_qr.call_args.args[0]
-        self.assertEqual(payload, asset_details_qr_text(self.asset))
-        self.assertTrue(payload.startswith("Device Name: EPS-Switch-01"))
-        self.assertIn("Location: Room 12", payload)
-        self.assertIn("Serial: SN444444", payload)
-        self.assertIn("MAC: 1A:23:7G:4E:12:9A", payload)
+        self.assertTrue(payload.startswith("http"))
+        self.assertIn(reverse("assets:details_card", args=[self.asset.pk]), payload)
+
+    def test_details_card_page_shows_device_name_location_serial_and_mac(self):
+        self.asset.device_name = "EPS-Switch-01"
+        self.asset.location = "Room 12"
+        self.asset.serial_number = "SN444444"
+        self.asset.mac_address = "1A:23:7G:4E:12:9A"
+        self.asset.mac_address_2 = ""
+        self.asset.save()
+        response = self.client.get(reverse("assets:details_card", args=[self.asset.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "EPS-Switch-01")
+        self.assertContains(response, "Room 12")
+        self.assertContains(response, "SN444444")
+        self.assertContains(response, "1A:23:7G:4E:12:9A")
+        self.assertNotContains(response, "MAC 2")
+
+    def test_details_card_page_shows_mac_2_when_present(self):
+        self.asset.mac_address_2 = "AA:BB:CC:DD:EE:FF"
+        self.asset.save()
+        response = self.client.get(reverse("assets:details_card", args=[self.asset.pk]))
+        self.assertContains(response, "MAC 2")
+        self.assertContains(response, "AA:BB:CC:DD:EE:FF")

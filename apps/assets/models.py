@@ -82,6 +82,13 @@ class Asset(models.Model):
             return request.build_absolute_uri(path)
         return path
 
+    def get_details_url(self, request=None):
+        from django.urls import reverse
+        path = reverse("assets:details_card", kwargs={"pk": self.pk})
+        if request:
+            return request.build_absolute_uri(path)
+        return path
+
     def clean(self):
         from django.core.exceptions import ValidationError
         from django.db.models import Q
