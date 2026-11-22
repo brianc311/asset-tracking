@@ -1,9 +1,15 @@
+import json
+from datetime import datetime, timezone
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db.models import Count
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
+from apps.accounts.data_backup import export_payload, import_payload, parse_backup
 from apps.accounts.models import AccessLog, BlockedIP
 
 
@@ -65,6 +71,44 @@ def block_ip(request):
         messages.success(request, f"Blocked {ip_address}.")
     else:
         messages.success(request, f"Updated block for {ip_address}.")
+    return redirect("accounts:security_logs")
+
+
+@_require_security_access
+@require_GET
+def export_data(request):
+    payload = export_payload()
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    response = HttpResponse(
+        json.dumps(payload, indent=2),
+        content_type="application/json",
+    )
+    response["Content-Disposition"] = f'attachment; filename="asset-tracking-data-{stamp}.json"'
+    return response
+
+
+@_require_security_access
+@require_POST
+def import_data(request):
+    upload = request.FILES.get("backup_file")
+    if not upload:
+        messages.error(request, "Choose an export file to import.")
+        return redirect("accounts:security_logs")
+    try:
+        payload = parse_backup(upload)
+        result = import_payload(payload, user=request.user)
+    except ValidationError as exc:
+        messages.error(request, exc.messages[0] if exc.messages else str(exc))
+        return redirect("accounts:security_logs")
+    messages.success(
+        request,
+        (
+            f"Added {result['added_assets']} asset(s), skipped {result['skipped_assets']} existing. "
+            f"Added {result['added_ips']} blocked IP(s), skipped {result['skipped_ips']} existing."
+        ),
+    )
+    for problem in result["problems"]:
+        messages.warning(request, problem)
     return redirect("accounts:security_logs")
 
 
