@@ -23,10 +23,7 @@ def parse_label_fields(raw: str | None) -> tuple[str, ...]:
 
 
 def device_label_main_value(asset) -> str:
-    device_name = (asset.device_name or "").strip()
-    if device_name:
-        return device_name
-    return (asset.serial_number or "").strip()
+    return (asset.device_name or "").strip()
 
 
 def label_field_value(asset, key: str) -> str:
@@ -42,13 +39,10 @@ def label_field_value(asset, key: str) -> str:
 
 
 def device_label_extra_lines(asset, field_keys) -> list[str]:
-    main = device_label_main_value(asset)
     lines = []
     for key in field_keys:
         value = label_field_value(asset, key)
         if not value:
-            continue
-        if key == "serial" and value == main:
             continue
         lines.append(f"{LABEL_FIELD_LABELS[key]}: {value}")
     return lines

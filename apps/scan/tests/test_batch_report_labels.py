@@ -119,8 +119,13 @@ class BatchLabelTests(TestCase):
         response = self.client.get("/scan/batch/labels/?mode=device")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-label-count="1"')
-        self.assertContains(response, "SN1")
+        self.assertContains(response, "Serial: SN1")
         self.assertContains(response, "AA:BB:CC:DD:EE:01")
+
+    def test_device_mode_labels_serial_when_device_name_is_blank(self):
+        response = self.client.get("/scan/batch/labels/?mode=device")
+        self.assertContains(response, "Serial: SN1")
+        self.assertNotContains(response, '<div class="label-value">SN1</div>')
 
     def test_value_mode_three_labels(self):
         response = self.client.get("/scan/batch/labels/?mode=value")
