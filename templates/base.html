@@ -17,7 +17,7 @@
   </script>
   <title>{% block title %}{{ branding.site_name }}{% endblock %}</title>
   {% if branding.favicon %}<link rel="icon" href="{{ branding.favicon.url }}">{% endif %}
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=6">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=7">
   {% if branding.custom_css %}<style>{{ branding.custom_css|safe }}</style>{% endif %}
   {% block extra_head %}{% endblock %}
 </head>
@@ -39,7 +39,10 @@
     {% if user.can_manage_branding %}<a href="{% url 'branding:console' %}">Branding</a>{% endif %}
     {% if user.can_view_access_logs %}<a href="{% url 'accounts:security_logs' %}">Security</a>{% endif %}
     <button type="button" onclick="toggleTheme()" title="Toggle theme">🌓</button>
-    <a href="{% url 'accounts:logout' %}">Logout</a>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
   </nav>
   {% endif %}
 </header>

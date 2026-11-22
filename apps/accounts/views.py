@@ -42,7 +42,14 @@ class AppLoginView(LoginView):
 
 
 class AppLogoutView(LogoutView):
+    http_method_names = ["get", "post", "head", "options"]
+    template_name = "accounts/logout_confirm.html"
     next_page = reverse_lazy("accounts:login")
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(self.next_page)
+        return super().get(request, *args, **kwargs)
 
 
 @login_required
