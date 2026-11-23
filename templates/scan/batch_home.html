@@ -14,8 +14,9 @@
 
 <div class="card" style="max-width:640px">
   <div class="toolbar" style="margin-bottom:1rem">
-    <a href="{% url 'scan:batch_home' %}?mode=quick" class="btn {% if batch_mode != 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Quick</a>
+    <a href="{% url 'scan:batch_home' %}?mode=quick" class="btn {% if batch_mode != 'full' and batch_mode != 'continuous' %}btn-primary{% else %}btn-secondary{% endif %}">Quick</a>
     <a href="{% url 'scan:batch_home' %}?mode=full" class="btn {% if batch_mode == 'full' %}btn-primary{% else %}btn-secondary{% endif %}">Full</a>
+    <a href="{% url 'scan:batch_home' %}?mode=continuous" class="btn {% if batch_mode == 'continuous' %}btn-primary{% else %}btn-secondary{% endif %}">Continuous</a>
   </div>
   <form method="post" action="{% url 'scan:batch_save' %}">
     {% csrf_token %}

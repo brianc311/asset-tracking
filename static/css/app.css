@@ -373,3 +373,6 @@ code {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
+.dup-row td {
+  background: rgba(239, 68, 68, 0.16);
+}

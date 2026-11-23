@@ -25,10 +25,17 @@ BATCH_KEY = "batch_session_key"
 BATCH_META = "batch_sessions_meta"
 MODE_QUICK = "quick"
 MODE_FULL = "full"
+MODE_CONTINUOUS = "continuous"
+BATCH_MODES = (MODE_QUICK, MODE_FULL, MODE_CONTINUOUS)
 
 
 def normalize_batch_mode(raw) -> str:
-    return MODE_FULL if (raw or "").strip().lower() == MODE_FULL else MODE_QUICK
+    value = (raw or "").strip().lower()
+    if value == MODE_FULL:
+        return MODE_FULL
+    if value == MODE_CONTINUOUS:
+        return MODE_CONTINUOUS
+    return MODE_QUICK
 
 
 def _update_batch_meta(request, key, **fields):
@@ -145,9 +152,13 @@ def batch_home(request):
     if not site:
         return redirect("scan:batch_start")
     requested = (request.GET.get("mode") or "").strip().lower()
-    if requested in (MODE_QUICK, MODE_FULL):
+    if requested in BATCH_MODES:
         _update_batch_meta(request, key, mode=requested)
         return redirect("scan:batch_home")
+    if normalize_batch_mode(meta.get("mode")) == MODE_CONTINUOUS:
+        from apps.scan.continuous import continuous_home
+
+        return continuous_home(request)
     return _render_batch_home(request, key, meta, site, product, _batch_form(meta))
 
 
@@ -240,6 +251,7 @@ def batch_end(request):
         meta = request.session.get(BATCH_META, {})
         meta.pop(key, None)
         request.session.pop(key, None)
+        request.session.pop(f"{key}_drafts", None)
         request.session[BATCH_META] = meta
         request.session.pop(BATCH_KEY, None)
         request.session.modified = True
