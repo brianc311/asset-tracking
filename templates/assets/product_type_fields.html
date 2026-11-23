@@ -1,0 +1,7 @@
+<label class="form-label">{{ form.product_name.label }}</label>
+{{ form.product_name }}
+{% if form.product_name.errors %}<p class="form-error">{{ form.product_name.errors.0 }}</p>{% endif %}
+<div class="new-product-name-wrap" hidden>
+  <label class="form-label">{{ form.new_product_name.label }}</label>
+  {{ form.new_product_name }}
+</div>

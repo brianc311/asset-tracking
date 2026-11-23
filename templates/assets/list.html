@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ branding.assets_page_title }} — {{ branding.site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ branding.assets_page_title }}</h1>
@@ -33,11 +34,45 @@
 
 {% if user.can_manage_assets and not show_archived %}
 <div class="toolbar no-print">
+  <button type="button" class="btn btn-secondary" data-bulk-action="update" form="bulk-form">Update selected</button>
   <button type="button" class="btn btn-secondary" data-bulk-action="archive" form="bulk-form">Archive Selected</button>
   {% if user.is_admin_role %}
   <button type="button" class="btn btn-danger" data-bulk-action="delete" form="bulk-form">Delete Selected</button>
   {% endif %}
   <a href="#" class="btn btn-secondary" id="print-selected" style="margin-left:auto">Print Selected</a>
+</div>
+<div id="bulk-update-modal" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:480px">
+    <h3 class="modal-title">Update selected</h3>
+    <p class="modal-body">Choose which field to change, then enter the new value. Every checked asset gets the same value.</p>
+    <form id="bulk-update-form" method="post" action="{% url 'assets:bulk' %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update">
+      <input type="hidden" name="asset_ids" value="">
+      <div class="field-row">
+        <label class="form-label" for="id_bulk_field">{{ bulk_update_form.field.label }}</label>
+        {{ bulk_update_form.field }}
+      </div>
+      <div class="field-row" id="bulk-row-product" hidden>
+        {% include "assets/product_type_fields.html" with form=bulk_update_form %}
+      </div>
+      <div id="bulk-row-site" hidden>
+        {% include "assets/site_name_fields.html" with form=bulk_update_form %}
+      </div>
+      <div class="field-row" id="bulk-row-value" hidden>
+        <label class="form-label" for="id_bulk_value">{{ bulk_update_form.value.label }}</label>
+        {{ bulk_update_form.value }}
+      </div>
+      <div class="field-row" id="bulk-row-comments" hidden>
+        <label class="form-label" for="id_bulk_comments">{{ bulk_update_form.comments.label }}</label>
+        {{ bulk_update_form.comments }}
+      </div>
+      <div class="modal-actions" style="margin-top:1.25rem">
+        <button type="button" class="btn btn-secondary" id="bulk-update-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endif %}
 
@@ -47,7 +82,7 @@
       <thead>
         <tr>
           {% if user.can_manage_assets and not show_archived %}<th><input type="checkbox" class="select-all"></th>{% endif %}
-          <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Serial</th><th>Model</th><th>Location</th><th>Actions</th>
+          <th>#</th><th>Barcode</th><th>Site</th><th>Product</th><th>Device Name</th><th>Serial</th><th>MAC</th><th>MAC 2</th><th>Model</th><th>Location</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -63,7 +98,10 @@
             {% if asset.photo %}<img src="{{ asset.photo.url }}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:0.5rem">{% endif %}
             <a href="{% url 'assets:detail' asset.pk %}">{{ asset.product_name }}</a>
           </td>
+          <td>{{ asset.device_name|default:"—" }}</td>
           <td>{{ asset.serial_number|default:"—" }}</td>
+          <td>{{ asset.mac_address|default:"—" }}</td>
+          <td>{{ asset.mac_address_2|default:"—" }}</td>
           <td>{{ asset.model_number|default:"—" }}</td>
           <td>{{ asset.location|default:"—" }}</td>
           <td class="no-print">
@@ -73,7 +111,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" style="text-align:center;color:var(--text-muted)">No assets found.</td></tr>
+        <tr><td colspan="12" style="text-align:center;color:var(--text-muted)">No assets found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -82,15 +120,101 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/site-name-select.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('bulk-update-modal');
+  const updateForm = document.getElementById('bulk-update-form');
+  const fieldSelect = document.getElementById('id_bulk_field');
+  const productSelect = updateForm?.querySelector('.product-name-select');
+  const productWrap = updateForm?.querySelector('.new-product-name-wrap');
+  const rows = {
+    product_name: document.getElementById('bulk-row-product'),
+    site_name: document.getElementById('bulk-row-site'),
+    comments: document.getElementById('bulk-row-comments')
+  };
+  const valueRow = document.getElementById('bulk-row-value');
+  const valueInput = document.getElementById('id_bulk_value');
+  const valueLabel = document.querySelector('label[for="id_bulk_value"]');
+  const applyBtn = updateForm?.querySelector('[type="submit"]');
+  const textFields = {
+    device_name: { label: 'New Device Name', placeholder: 'e.g. EPS-Switch-01' },
+    location: { label: 'New Location', placeholder: 'Room, shelf…' },
+    model_number: { label: 'New Model', placeholder: '' }
+  };
+
+  function selectedIds() {
+    return [...document.querySelectorAll('.row-select:checked')].map(c => c.value);
+  }
+
+  function syncBulkField() {
+    const field = fieldSelect?.value || '';
+    Object.keys(rows).forEach((key) => {
+      if (rows[key]) rows[key].hidden = true;
+    });
+    if (valueRow) valueRow.hidden = true;
+    const textMeta = textFields[field];
+    if (textMeta) {
+      if (valueRow) valueRow.hidden = false;
+      if (valueLabel) valueLabel.textContent = textMeta.label;
+      if (valueInput) valueInput.placeholder = textMeta.placeholder;
+    } else if (rows[field]) {
+      rows[field].hidden = false;
+    }
+    if (productWrap && productSelect) {
+      productWrap.hidden = productSelect.value !== '__new__';
+    }
+    if (applyBtn) applyBtn.disabled = !field;
+  }
+
+  window.openBulkUpdateModal = function (ids) {
+    if (!modal || !updateForm) return;
+    updateForm.querySelector('[name=asset_ids]').value = ids.join(',');
+    modal.classList.add('open');
+    syncBulkField();
+  };
+
+  // Capture so a cached app.js cannot show "update 2 item(s)?" before the field picker.
+  document.querySelector('[data-bulk-action="update"]')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const ids = selectedIds();
+    if (!ids.length) {
+      await AppModal.alert('No selection', 'Please select at least one item.');
+      return;
+    }
+    window.openBulkUpdateModal(ids);
+  }, true);
+
   initBulkSelect('assets-table', 'bulk-form');
   document.getElementById('print-selected')?.addEventListener('click', async (e) => {
     e.preventDefault();
-    const ids = [...document.querySelectorAll('.row-select:checked')].map(c => c.value);
+    const ids = selectedIds();
     if (!ids.length) { await AppModal.alert('No selection', 'Select items to print.'); return; }
     window.open('{% url "assets:report" %}?ids=' + ids.join(','), '_blank');
   });
+
+  fieldSelect?.addEventListener('change', syncBulkField);
+  productSelect?.addEventListener('change', syncBulkField);
+  document.getElementById('bulk-update-cancel')?.addEventListener('click', () => {
+    modal?.classList.remove('open');
+  });
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('open');
+  });
+  updateForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!fieldSelect?.value) return;
+    const fieldLabel = fieldSelect.selectedOptions[0]?.text || 'this field';
+    const count = (updateForm.querySelector('[name=asset_ids]').value || '')
+      .split(',').filter(Boolean).length;
+    const ok = await AppModal.confirm(
+      'Confirm update',
+      `Set ${fieldLabel} on ${count} item(s)?`
+    );
+    if (ok) updateForm.submit();
+  });
+  syncBulkField();
 });
 </script>
 {% endblock %}

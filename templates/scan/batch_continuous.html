@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Continuous Batch Scan — {{ branding.site_name }}{% endblock %}
+{% block extra_head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+{% block content %}
+<h1 class="page-title">Continuous Batch Scan</h1>
+<p class="page-subtitle">
+  Site: <strong>{{ site_name }}</strong> —
+  Type: <strong>{{ product_name }}</strong>
+</p>
+<p class="page-subtitle">Click Scan and keep scanning serials or MACs. The camera stays on. Press Done when finished, then fill Device Name, Location, and Comments and click Finish.</p>
+
+<div class="toolbar" style="margin-bottom:1rem">
+  <a href="{% url 'scan:batch_home' %}?mode=quick" class="btn btn-secondary">Quick</a>
+  <a href="{% url 'scan:batch_home' %}?mode=full" class="btn btn-secondary">Full</a>
+  <a href="{% url 'scan:batch_home' %}?mode=continuous" class="btn btn-primary">Continuous</a>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  {% if not done %}
+  <div id="continuous-scan-wrap">
+    <div class="toolbar">
+      <button type="button" class="btn btn-primary" id="continuous-scan-start">📷 Scan</button>
+      <form method="post" action="{% url 'scan:continuous_done' %}" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary" id="continuous-scan-done">Done</button>
+      </form>
+    </div>
+    <p id="continuous-scan-status" class="page-subtitle">Camera is off. Click Scan to start, or type a serial/MAC and press Add.</p>
+    <div class="field-row" style="margin-top:0.75rem">
+      <label class="form-label" for="continuous-manual-value">Serial or MAC</label>
+      <div class="field-row-scan">
+        <input type="text" id="continuous-manual-value" class="form-input" autocomplete="off" placeholder="Scan or type, then Add">
+        <button type="button" class="btn btn-secondary" id="continuous-manual-add">Add</button>
+      </div>
+    </div>
+    <div id="continuous-scan-reader" style="width:100%;max-width:480px;min-height:220px;margin-top:0.75rem"></div>
+  </div>
+  {% else %}
+  <h2 style="margin-top:0">Finish this batch</h2>
+  <p class="page-subtitle">Device Name, Location, and Comments are added to every new row. Duplicate rows are skipped. You can still type one extra serial or MAC below.</p>
+  <form method="post" action="{% url 'scan:continuous_finish' %}">
+    {% csrf_token %}
+    <div class="field-row">
+      <label class="form-label" for="id_cont_device_name">Device Name</label>
+      <input type="text" name="device_name" id="id_cont_device_name" class="form-input" placeholder="EPS-Switch-01">
+    </div>
+    <div class="field-row">
+      <label class="form-label" for="id_cont_serial">Serial number</label>
+      <input type="text" name="serial_number" id="id_cont_serial" class="form-input" placeholder="Optional extra serial">
+    </div>
+    <div class="field-row">
+      <label class="form-label" for="id_cont_mac">MAC address</label>
+      <input type="text" name="mac_address" id="id_cont_mac" class="form-input" placeholder="Optional extra MAC">
+    </div>
+    <div class="field-row">
+      <label class="form-label" for="id_cont_location">Location</label>
+      <input type="text" name="location" id="id_cont_location" class="form-input" placeholder="Room, shelf…">
+    </div>
+    <div class="field-row">
+      <label class="form-label" for="id_cont_comments">Comments</label>
+      <textarea name="comments" id="id_cont_comments" class="form-input" rows="2" placeholder="Comments"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Finish</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="toolbar" style="margin-bottom:0.75rem">
+    <h2 style="margin:0">Scanned rows</h2>
+    <a href="{{ csv_url }}" class="btn btn-secondary">Export CSV</a>
+    <a href="{{ excel_url }}" class="btn btn-secondary">Export Excel</a>
+  </div>
+  <p id="continuous-dup-banner" class="form-error" style="color:var(--danger);{% if not last_duplicate %}display:none;{% endif %}">{{ last_duplicate }}</p>
+  <div class="table-wrap">
+    <table class="data-table" id="continuous-rows">
+      <thead>
+        <tr><th>#</th><th>Serial</th><th>MAC</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.duplicate %}dup-row{% endif %}" data-row="{{ row.n }}">
+          <td>{{ row.n }}</td>
+          <td>{{ row.serial|default:"—" }}</td>
+          <td>{{ row.mac|default:"—" }}</td>
+          <td>{% if row.duplicate %}<span class="badge badge-danger">{{ row.duplicate_reason }}</span>{% else %}OK{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr id="continuous-empty"><td colspan="4" style="text-align:center;color:var(--text-muted)">No scans yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<form method="post" action="{% url 'scan:batch_end' %}" class="no-print" style="margin-top:1rem">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-secondary">End batch</button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/continuous-scan.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initContinuousScan({
+    addUrl: "{{ add_url }}",
+    csrfToken: "{{ csrf_token }}"
+  });
+});
+</script>
+{% endblock %}

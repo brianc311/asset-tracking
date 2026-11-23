@@ -5,10 +5,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.assets.barcode_utils import assets_pdf_response, barcode_image_response
+from apps.assets.barcode_utils import assets_have_second_mac, assets_pdf_response, barcode_image_response
 from apps.assets.email_reports import EmailNotConfiguredError, email_is_configured, send_site_asset_report
-from apps.assets.forms import AssetForm, BulkActionForm, SiteReportEmailForm
+from apps.assets.bulk import BULK_UPDATE_LABELS, apply_bulk_field_update
+from apps.assets.forms import AssetForm, BulkActionForm, BulkUpdateForm, SiteReportEmailForm
 from apps.assets.models import Asset
+from apps.assets.product_types import get_known_product_names
+from apps.assets.report_columns import (
+    REPORT_COLUMN_KEYS,
+    REPORT_COLUMN_LABELS,
+    parse_report_columns,
+    visible_report_columns,
+)
 from apps.assets.site_names import get_known_site_names, get_site_names_with_assets
 
 
@@ -35,8 +43,11 @@ def asset_list(request):
     if q:
         filters = (
             Q(product_name__icontains=q)
+            | Q(device_name__icontains=q)
             | Q(barcode_value__icontains=q)
             | Q(serial_number__icontains=q)
+            | Q(mac_address__icontains=q)
+            | Q(mac_address_2__icontains=q)
             | Q(model_number__icontains=q)
             | Q(site_name__icontains=q)
             | Q(location__icontains=q)
@@ -44,6 +55,10 @@ def asset_list(request):
         if q.isdigit():
             filters |= Q(asset_number=int(q))
         qs = qs.filter(filters)
+    bulk_update_form = BulkUpdateForm(
+        known_site_names=get_known_site_names(request),
+        known_product_names=get_known_product_names(),
+    )
     return render(
         request,
         "assets/list.html",
@@ -52,6 +67,7 @@ def asset_list(request):
             "show_archived": show_archived,
             "query": q,
             "site_filter": site_filter,
+            "bulk_update_form": bulk_update_form,
         },
     )
 
@@ -64,10 +80,14 @@ def _active_scan_site_name(request):
     return (meta.get("site_name") or "").strip()
 
 
+CREATE_DEFAULTS_KEY = "asset_create_defaults"
+
+
 @_require_asset_access
 def asset_create(request):
     known_sites = get_known_site_names(request)
-    default_site = _active_scan_site_name(request)
+    defaults = request.session.get(CREATE_DEFAULTS_KEY) or {}
+    default_site = defaults.get("site_name") or _active_scan_site_name(request)
     if request.method == "POST":
         form = AssetForm(
             request.POST,
@@ -80,9 +100,30 @@ def asset_create(request):
             asset.created_by = request.user
             asset.updated_by = request.user
             asset.save()
-            return redirect("assets:detail", pk=asset.pk)
+            request.session[CREATE_DEFAULTS_KEY] = {
+                "site_name": asset.site_name,
+                "product_name": asset.product_name,
+                "model_number": asset.model_number,
+                "location": asset.location,
+                "barcode_type": asset.barcode_type,
+            }
+            label = asset.serial_number or f"#{asset.asset_number}"
+            messages.success(
+                request,
+                f"Saved {asset.product_name} ({label}). You can add another.",
+            )
+            return redirect("assets:create")
     else:
-        form = AssetForm(known_site_names=known_sites, default_site_name=default_site)
+        initial = {
+            key: value
+            for key, value in defaults.items()
+            if key != "site_name" and value
+        }
+        form = AssetForm(
+            known_site_names=known_sites,
+            default_site_name=default_site,
+            initial=initial,
+        )
     return render(
         request,
         "assets/form.html",
@@ -120,7 +161,28 @@ def asset_edit(request, pk):
 @login_required
 def asset_barcode(request, pk):
     asset = get_object_or_404(Asset, pk=pk)
+    kind = request.GET.get("kind")
+    if kind == "scan":
+        return barcode_image_response(
+            asset,
+            data=asset.get_scan_url(request),
+            as_qr=True,
+            filename_suffix="scan",
+        )
+    if kind == "details":
+        return barcode_image_response(
+            asset,
+            data=asset.get_details_url(request),
+            as_qr=True,
+            filename_suffix="details",
+        )
     return barcode_image_response(asset)
+
+
+@login_required
+def asset_details_card(request, pk):
+    asset = get_object_or_404(Asset, pk=pk)
+    return render(request, "assets/details_card.html", {"asset": asset})
 
 
 @_require_asset_access
@@ -128,6 +190,12 @@ def asset_barcode(request, pk):
 def bulk_action(request):
     form = BulkActionForm(request.POST)
     if not form.is_valid():
+        if request.POST.get("action") == BulkActionForm.ACTION_UPDATE:
+            detail = form.non_field_errors()
+            messages.error(
+                request,
+                detail[0] if detail else "Could not update the selected assets.",
+            )
         return redirect("assets:list")
 
     ids = [int(x) for x in form.cleaned_data["asset_ids"].split(",") if x.strip().isdigit()]
@@ -139,12 +207,43 @@ def bulk_action(request):
     elif action == BulkActionForm.ACTION_DELETE:
         if request.user.is_admin_role:
             assets.delete()
+    elif action == BulkActionForm.ACTION_UPDATE:
+        count = apply_bulk_field_update(
+            assets,
+            field=form.cleaned_data["field"],
+            value=form.cleaned_data["resolved_value"],
+            user=request.user,
+        )
+        label = BULK_UPDATE_LABELS[form.cleaned_data["field"]]
+        noun = "asset" if count == 1 else "assets"
+        messages.success(request, f"Updated {label} on {count} {noun}.")
 
     return redirect("assets:list")
 
 
 def _site_report_queryset(site_name):
     return Asset.objects.filter(site_name=site_name, is_archived=False).order_by("asset_number")
+
+
+def _report_column_context(request, assets):
+    column_keys = parse_report_columns(request.GET.get("cols"))
+    show_mac_2 = assets_have_second_mac(assets)
+    visible_keys = visible_report_columns(column_keys, show_mac_2=show_mac_2)
+    return {
+        "show_mac_2": show_mac_2,
+        "column_keys": column_keys,
+        "visible_keys": visible_keys,
+        "visible_headers": [REPORT_COLUMN_LABELS[key] for key in visible_keys],
+        "report_columns": [
+            {
+                "key": key,
+                "label": REPORT_COLUMN_LABELS[key],
+                "selected": key in column_keys,
+            }
+            for key in REPORT_COLUMN_KEYS
+        ],
+        "cols_query": ",".join(column_keys),
+    }
 
 
 @login_required
@@ -172,16 +271,18 @@ def site_report_view(request):
 
     assets = _site_report_queryset(site_name)
     title = f"Asset Report — {site_name}"
+    context = {
+        "assets": assets,
+        "site_name": site_name,
+        "title": title,
+        "total": assets.count(),
+        "email_configured": email_is_configured(),
+    }
+    context.update(_report_column_context(request, assets))
     return render(
         request,
         "assets/site_report.html",
-        {
-            "assets": assets,
-            "site_name": site_name,
-            "title": title,
-            "total": assets.count(),
-            "email_configured": email_is_configured(),
-        },
+        context,
     )
 
 
@@ -209,14 +310,21 @@ def print_report(request):
         assets = Asset.objects.filter(is_archived=False)
         title = "All Active Assets Report"
 
+    column_context = _report_column_context(request, assets)
     export = request.GET.get("export")
     if export == "pdf":
-        return assets_pdf_response(assets, title=title)
+        return assets_pdf_response(assets, title=title, column_keys=column_context["column_keys"])
 
+    context = {
+        "assets": assets,
+        "title": title,
+        "total": assets.count(),
+    }
+    context.update(column_context)
     return render(
         request,
         "assets/print_report.html",
-        {"assets": assets, "title": title, "total": assets.count()},
+        context,
     )
 
 

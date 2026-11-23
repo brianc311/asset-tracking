@@ -7,6 +7,12 @@ from django.db import models
 
 User = get_user_model()
 
+SERIAL_ALREADY_IN_DATABASE = "This serial number is already in the database."
+MAC_ALREADY_IN_DATABASE = "This MAC address is already in the database."
+SERIAL_AND_MAC_ALREADY_IN_DATABASE = (
+    "This serial number and MAC address are already in the database."
+)
+
 
 class Asset(models.Model):
     class BarcodeType(models.TextChoices):
@@ -25,7 +31,10 @@ class Asset(models.Model):
     )
 
     product_name = models.CharField(max_length=255)
+    device_name = models.CharField(max_length=128, blank=True)
     serial_number = models.CharField(max_length=128, blank=True)
+    mac_address = models.CharField(max_length=17, blank=True, db_index=True)
+    mac_address_2 = models.CharField(max_length=17, blank=True, db_index=True)
     model_number = models.CharField(max_length=128, blank=True)
     site_name = models.CharField(
         max_length=120,
@@ -72,6 +81,83 @@ class Asset(models.Model):
         if request:
             return request.build_absolute_uri(path)
         return path
+
+    def get_details_url(self, request=None):
+        from django.urls import reverse
+        path = reverse("assets:details_card", kwargs={"pk": self.pk})
+        if request:
+            return request.build_absolute_uri(path)
+        return path
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.db.models import Q
+
+        from apps.assets.mac import normalize_mac
+
+        super().clean()
+        errors = {}
+        serial = (self.serial_number or "").strip()
+        normalized_macs = {}
+
+        for field_name in ("mac_address", "mac_address_2"):
+            value = getattr(self, field_name)
+            if not value:
+                continue
+            try:
+                normalized_value = normalize_mac(value)
+            except ValueError as exc:
+                errors[field_name] = str(exc)
+                continue
+            setattr(self, field_name, normalized_value)
+            normalized_macs[field_name] = normalized_value
+
+        if (
+            len(normalized_macs) == 2
+            and normalized_macs["mac_address"] == normalized_macs["mac_address_2"]
+        ):
+            errors["mac_address_2"] = "MAC 2 must be different from MAC 1."
+
+        if self.is_archived:
+            if errors:
+                raise ValidationError(errors)
+            return
+
+        serial_duplicate = False
+        if serial:
+            qs = Asset.objects.filter(is_archived=False, serial_number__iexact=serial)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            serial_duplicate = qs.exists()
+
+        mac_duplicate_fields = []
+        for field_name, value in (
+            ("mac_address", self.mac_address),
+            ("mac_address_2", self.mac_address_2),
+        ):
+            if field_name not in normalized_macs:
+                continue
+            qs = Asset.objects.filter(is_archived=False).filter(
+                Q(mac_address=value) | Q(mac_address_2=value)
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                mac_duplicate_fields.append(field_name)
+
+        if serial_duplicate and mac_duplicate_fields:
+            combined = SERIAL_AND_MAC_ALREADY_IN_DATABASE
+            errors["serial_number"] = combined
+            for field_name in mac_duplicate_fields:
+                errors[field_name] = combined
+        elif serial_duplicate:
+            errors["serial_number"] = SERIAL_ALREADY_IN_DATABASE
+        else:
+            for field_name in mac_duplicate_fields:
+                errors[field_name] = MAC_ALREADY_IN_DATABASE
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if not self.barcode_value:

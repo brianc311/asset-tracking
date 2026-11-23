@@ -9,6 +9,7 @@ urlpatterns = [
     path("new/", views.asset_create, name="create"),
     path("<int:pk>/", views.asset_detail, name="detail"),
     path("<int:pk>/edit/", views.asset_edit, name="edit"),
+    path("<int:pk>/card/", views.asset_details_card, name="details_card"),
     path("<int:pk>/barcode/", views.asset_barcode, name="barcode"),
     path("bulk/", views.bulk_action, name="bulk"),
     path("report/", views.print_report, name="report"),

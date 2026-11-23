@@ -86,7 +86,8 @@ p, li, label {
   cursor: pointer;
   font-size: 0.9rem;
 }
-.nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.15); }
+.nav-links form { display: inline; margin: 0; }
+.nav-links a:hover, .nav-links a.active, .nav-links button:hover { background: rgba(255,255,255,0.15); }
 
 .main-content { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 
@@ -371,4 +372,7 @@ code {
   white-space: nowrap;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
+}
+.dup-row td {
+  background: rgba(239, 68, 68, 0.16);
 }

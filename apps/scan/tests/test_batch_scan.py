@@ -1,0 +1,456 @@
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.test import TestCase
+from django.urls import reverse
+from unittest.mock import patch
+
+from apps.assets.models import Asset
+from apps.scan.forms import BatchItemForm, StartBatchForm
+
+User = get_user_model()
+
+
+class BatchFormTests(TestCase):
+    def test_start_requires_site_and_type(self):
+        form = StartBatchForm(data={"site_name": "", "product_name": ""}, known_site_names=[], known_product_names=[])
+        self.assertFalse(form.is_valid())
+
+    def test_start_new_names_have_model_compatible_max_lengths(self):
+        form = StartBatchForm(known_site_names=[], known_product_names=[])
+
+        self.assertEqual(form.fields["new_site_name"].max_length, 120)
+        self.assertEqual(form.fields["new_product_name"].max_length, 255)
+
+    def test_skip_mac_2_allows_blank(self):
+        form = BatchItemForm(
+            data={
+                "serial_number": "SN1",
+                "mac_address": "aa:bb:cc:dd:ee:01",
+                "mac_address_2": "",
+                "skip_mac_2": "on",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data["mac_address"], "AA:BB:CC:DD:EE:01")
+        self.assertEqual(form.cleaned_data["mac_address_2"], "")
+
+    def test_blank_mac_2_is_valid_without_skip(self):
+        form = BatchItemForm(
+            data={
+                "serial_number": "SN1",
+                "mac_address": "aa:bb:cc:dd:ee:01",
+                "mac_address_2": "",
+            }
+        )
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data["mac_address_2"], "")
+
+
+class BatchViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+
+    def test_start_get_ok(self):
+        response = self.client.get("/scan/batch/start/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_home_redirects_without_session(self):
+        response = self.client.get("/scan/batch/")
+        self.assertRedirects(response, "/scan/batch/start/")
+
+    def test_start_post_opens_home(self):
+        response = self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        follow = self.client.get("/scan/batch/")
+        self.assertContains(follow, "HQ")
+        self.assertContains(follow, "AP")
+        self.assertContains(follow, "Skip 2nd MAC")
+
+    def test_home_loads_barcode_scanner_library(self):
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        response = self.client.get("/scan/batch/")
+        self.assertContains(response, "html5-qrcode")
+        self.assertContains(response, "field-scanner")
+
+    def test_non_staff_user_cannot_access_batch_views(self):
+        user = User.objects.create_user(username="user", password="x", role=User.Role.USER)
+        self.client.force_login(user)
+
+        start_response = self.client.get("/scan/batch/start/")
+        end_response = self.client.post("/scan/batch/end/")
+
+        dashboard_url = reverse("accounts:dashboard")
+        self.assertRedirects(start_response, dashboard_url)
+        self.assertRedirects(end_response, dashboard_url)
+
+
+class BatchModeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def _meta(self):
+        session = self.client.session
+        key = session["batch_session_key"]
+        return session["batch_sessions_meta"][key]
+
+    def test_new_batch_defaults_to_quick(self):
+        self.assertEqual(self._meta().get("mode", "quick"), "quick")
+
+    def test_mode_query_persists_on_refresh(self):
+        response = self.client.get("/scan/batch/", {"mode": "full"})
+        self.assertRedirects(response, "/scan/batch/")
+        self.assertEqual(self._meta()["mode"], "full")
+        self.client.get("/scan/batch/")
+        self.assertEqual(self._meta()["mode"], "full")
+
+    def test_invalid_mode_query_is_ignored(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.get("/scan/batch/", {"mode": "nope"})
+        self.assertEqual(self._meta()["mode"], "full")
+
+
+class BatchSaveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_skip_mac_2_saves_blank(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "mac_address_2": "", "skip_mac_2": "on"},
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN1")
+        self.assertEqual(asset.mac_address, "AA:BB:CC:DD:EE:01")
+        self.assertEqual(asset.mac_address_2, "")
+        self.assertEqual(asset.site_name, "HQ")
+        self.assertEqual(asset.product_name, "AP")
+        self.assertIsNotNone(asset.created_at)
+
+    def test_blank_mac_2_saves_without_skip(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "4444441",
+                "mac_address": "1A:23:7G:4E:12:90",
+                "mac_address_2": "",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="4444441")
+        self.assertEqual(asset.mac_address, "1A:23:7G:4E:12:90")
+        self.assertEqual(asset.mac_address_2, "")
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, "4444441")
+        self.assertContains(home, "1A:23:7G:4E:12:90")
+
+    def test_duplicate_serial_same_site_rejected(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN1",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST",
+        )
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.assertEqual(Asset.objects.filter(serial_number="SN1").count(), 1)
+        self.assertContains(response, "This serial number is already in the database.", status_code=200)
+
+    def test_duplicate_mac_rejected(self):
+        Asset.objects.create(
+            product_name="Switch",
+            site_name="Other",
+            serial_number="SN9",
+            mac_address="AA:BB:CC:DD:EE:01",
+            barcode_value="AT-EXIST-MAC",
+        )
+        response = self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN2", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
+        self.assertContains(response, "This MAC address is already in the database.", status_code=200)
+
+    def test_model_errors_for_non_form_fields_become_non_field_errors(self):
+        validation_error = ValidationError(
+            {
+                "site_name": ["Invalid batch site."],
+                "serial_number": ["Invalid serial."],
+            }
+        )
+        with patch("apps.scan.batch.Asset.full_clean", side_effect=validation_error):
+            response = self.client.post(
+                "/scan/batch/save/",
+                {
+                    "serial_number": "SN2",
+                    "mac_address": "aa:bb:cc:dd:ee:01",
+                    "skip_mac_2": "on",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid batch site.")
+        self.assertContains(response, "Invalid serial.")
+        self.assertFalse(Asset.objects.filter(serial_number="SN2").exists())
+
+
+class BatchFullSaveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def _meta(self):
+        session = self.client.session
+        key = session["batch_session_key"]
+        return session["batch_sessions_meta"][key]
+
+    def test_full_save_stores_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-FULL")
+        self.assertEqual(asset.model_number, "SP4628")
+        self.assertEqual(asset.location, "Room1")
+        self.assertEqual(self._meta()["last_model_number"], "SP4628")
+        self.assertEqual(self._meta()["last_location"], "Room1")
+
+    def test_quick_save_ignores_posted_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        self.client.get("/scan/batch/", {"mode": "quick"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-QUICK",
+                "mac_address": "aa:bb:cc:dd:ee:22",
+                "model_number": "SHOULD-IGNORE",
+                "location": "SHOULD-IGNORE",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-QUICK")
+        self.assertEqual(asset.model_number, "")
+        self.assertEqual(asset.location, "")
+        self.assertEqual(self._meta()["last_model_number"], "SP4628")
+        self.assertEqual(self._meta()["last_location"], "Room1")
+
+    def test_stale_full_form_is_rejected_when_session_mode_is_quick(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "batch_mode": "full",
+                "serial_number": "SN-STALE",
+                "mac_address": "aa:bb:cc:dd:ee:44",
+                "model_number": "SP4628",
+                "location": "Room3",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Asset.objects.filter(serial_number="SN-STALE").exists())
+        self.assertContains(response, "Batch mode changed. Choose Quick or Full again, then save.")
+        self.assertContains(response, 'value="SP4628"')
+        self.assertContains(response, 'value="Room3"')
+
+
+class BatchFullUiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_quick_hides_model_and_location_fields(self):
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, ">Quick</a>")
+        self.assertContains(home, ">Full</a>")
+        self.assertNotContains(home, 'id="id_model_number"')
+        self.assertNotContains(home, 'id="id_location"')
+
+    def test_full_shows_model_and_location_and_keeps_them_after_save(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "model_number": "SP4628",
+                "location": "Room1",
+            },
+        )
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, 'id="id_model_number"')
+        self.assertContains(home, 'value="SP4628"')
+        self.assertContains(home, 'value="Room1"')
+        self.assertNotContains(home, 'value="SN-FULL"')
+        self.assertNotContains(home, 'value="AA:BB:CC:DD:EE:11"')
+        self.assertContains(home, "<th>Model</th>")
+        self.assertContains(home, "<th>Location</th>")
+        self.assertContains(home, "SP4628")
+        self.assertContains(home, "Room1")
+
+    def test_failed_full_save_keeps_posted_model_and_location(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN-DUP",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST-FULL",
+        )
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-DUP",
+                "mac_address": "aa:bb:cc:dd:ee:33",
+                "model_number": "SP4628",
+                "location": "Room2",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This serial number is already in the database.")
+        self.assertContains(response, 'value="SP4628"')
+        self.assertContains(response, 'value="Room2"')
+
+    def test_failed_save_mode_links_target_batch_home(self):
+        Asset.objects.create(
+            product_name="AP",
+            site_name="HQ",
+            serial_number="SN-DUP",
+            mac_address="AA:BB:CC:DD:EE:99",
+            barcode_value="AT-EXIST-LINKS",
+        )
+        self.client.get("/scan/batch/", {"mode": "full"})
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "batch_mode": "full",
+                "serial_number": "SN-DUP",
+                "mac_address": "aa:bb:cc:dd:ee:33",
+                "model_number": "SP4628",
+                "location": "Room2",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/scan/batch/?mode=quick"')
+        self.assertContains(response, 'href="/scan/batch/?mode=full"')
+        self.assertNotContains(response, "/scan/batch/save/?mode=")
+
+
+class BatchDeviceNameTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+
+    def test_quick_save_stores_and_remembers_device_name(self):
+        response = self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-DEV",
+                "mac_address": "aa:bb:cc:dd:ee:11",
+                "device_name": "EPS-AP-01",
+                "batch_mode": "quick",
+            },
+        )
+        self.assertRedirects(response, "/scan/batch/")
+        asset = Asset.objects.get(serial_number="SN-DEV")
+        self.assertEqual(asset.device_name, "EPS-AP-01")
+        home = self.client.get("/scan/batch/")
+        self.assertContains(home, 'id="id_device_name"')
+        self.assertContains(home, 'value="EPS-AP-01"')
+        self.assertContains(home, "<th>Device Name</th>")
+        self.assertNotContains(home, 'value="SN-DEV"')
+
+    def test_full_save_stores_device_name_with_model_and_location(self):
+        self.client.get("/scan/batch/", {"mode": "full"})
+        self.client.post(
+            "/scan/batch/save/",
+            {
+                "serial_number": "SN-FULL-DEV",
+                "mac_address": "aa:bb:cc:dd:ee:22",
+                "device_name": "EPS-Switch-01",
+                "model_number": "SP4628",
+                "location": "Room1",
+                "batch_mode": "full",
+            },
+        )
+        asset = Asset.objects.get(serial_number="SN-FULL-DEV")
+        self.assertEqual(asset.device_name, "EPS-Switch-01")
+        self.assertEqual(asset.model_number, "SP4628")
+        self.assertEqual(asset.location, "Room1")
+
+
+class BatchArchiveTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="staff", password="x", role=User.Role.STAFF)
+        self.client.force_login(self.user)
+        self.client.post(
+            "/scan/batch/start/",
+            {"site_name": "__new__", "new_site_name": "HQ", "product_name": "__new__", "new_product_name": "AP"},
+        )
+        self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN1", "mac_address": "aa:bb:cc:dd:ee:01", "skip_mac_2": "on"},
+        )
+        self.client.post(
+            "/scan/batch/save/",
+            {"serial_number": "SN2", "mac_address": "aa:bb:cc:dd:ee:02", "skip_mac_2": "on"},
+        )
+
+    def test_archive_one(self):
+        asset = Asset.objects.get(serial_number="SN1")
+
+        self.client.post("/scan/batch/archive/", {"asset_ids": str(asset.pk)})
+
+        asset.refresh_from_db()
+        self.assertTrue(asset.is_archived)
+        self.assertIsNotNone(asset.archived_at)
+        home = self.client.get("/scan/batch/")
+        self.assertNotContains(home, "SN1")
+        self.assertContains(home, "SN2")

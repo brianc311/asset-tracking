@@ -4,6 +4,19 @@
 <h1 class="page-title">Access &amp; Security Logs</h1>
 <p class="page-subtitle">Track page visits and login attempts by IP address. Block suspicious addresses.</p>
 
+<div class="card" style="margin-bottom:1.25rem">
+  <h2 style="margin-top:0">Backup data</h2>
+  <p class="page-subtitle" style="margin-top:0">Export assets and blocked IPs. Import only adds missing rows — existing barcodes and IPs are left unchanged.</p>
+  <div class="toolbar">
+    <a href="{% url 'accounts:export_data' %}" class="btn btn-secondary">Export data</a>
+    <form method="post" action="{% url 'accounts:import_data' %}" enctype="multipart/form-data" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin:0">
+      {% csrf_token %}
+      <input type="file" name="backup_file" accept="application/json,.json" class="form-input" style="margin:0;width:auto" required>
+      <button type="submit" class="btn btn-primary">Import data</button>
+    </form>
+  </div>
+</div>
+
 <div class="card-grid">
   <div class="card">
     <h2 style="margin-top:0">Block an IP</h2>

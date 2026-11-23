@@ -125,6 +125,19 @@ function initBulkSelect(tableId, formId) {
         return;
       }
       const action = btn.dataset.bulkAction;
+      if (action === 'update') {
+        if (typeof window.openBulkUpdateModal === 'function') {
+          window.openBulkUpdateModal(ids);
+          return;
+        }
+        const modal = document.getElementById('bulk-update-modal');
+        const updateForm = document.getElementById('bulk-update-form');
+        if (modal && updateForm) {
+          updateForm.querySelector('[name=asset_ids]').value = ids.join(',');
+          modal.classList.add('open');
+        }
+        return;
+      }
       const labels = { archive: 'archive', delete: 'permanently delete' };
       const ok = await AppModal.confirm(
         'Confirm action',

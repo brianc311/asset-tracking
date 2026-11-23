@@ -19,11 +19,15 @@ staticfiles/
 .env
 .env.local
 
+# Local HTTPS CA/certs (run_dev_https.bat)
+.certs/
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+/.superpowers/
 
 # OS
 .DS_Store
