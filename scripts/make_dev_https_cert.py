@@ -172,7 +172,12 @@ def trust_ca_on_windows() -> bool:
             capture_output=True,
             text=True,
             check=False,
+            timeout=12,
         )
+    except subprocess.TimeoutExpired:
+        print("Skipped Windows trust prompt (it was waiting for a click).")
+        print("On a phone tap Advanced - Proceed.")
+        return False
     except OSError:
         return False
     output = (result.stdout or "") + (result.stderr or "")
